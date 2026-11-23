@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import Sortable from 'sortablejs'
-
-export interface TaskMove {
-  taskId: number
-  statusId: number
-  /** Visible neighbours after the drop, used to compute the new position. */
-  prevId: number | null
-  nextId: number | null
-}
-
+import type { TaskMove } from '~/composables/taskDragDrop'
 const props = defineProps<{
   projectKey: string
   statuses: StatusDTO[]
@@ -37,86 +28,17 @@ const columns = computed(() =>
 const adding = ref<number | null>(null)
 
 // --- Drag and drop -------------------------------------------------------------------------------------------------
-// Sortable moves DOM nodes itself; on drop we put the node back where Vue rendered it and let the state change
-// re-render the card in its new place, so Vue's virtual DOM never goes out of sync.
-const columnEls = new Map<number, HTMLElement>()
-const sortables = new Map<number, { el: HTMLElement; sortable: Sortable }>()
-let origin: { parent: Node; next: Node | null } | null = null
-let lastDragEnd = 0
-
-function setColumnEl(statusId: number, el: unknown) {
-  if (el instanceof HTMLElement) columnEls.set(statusId, el)
-  else columnEls.delete(statusId)
-}
-
-function neighbour(el: Element, direction: 'previousElementSibling' | 'nextElementSibling') {
-  let node = el[direction]
-  while (node && !(node instanceof HTMLElement && node.dataset.taskId)) node = node[direction]
-  return node instanceof HTMLElement ? Number(node.dataset.taskId) : null
-}
-
-function createSortable(el: HTMLElement) {
-  return Sortable.create(el, {
-    group: 'tasks',
-    draggable: '[data-task-id]',
-    animation: 150,
-    // Pointer-event fallback: identical behaviour for mouse and touch, and styled drag previews.
-    forceFallback: true,
-    fallbackTolerance: 4,
-    fallbackOnBody: true,
-    delay: 180,
-    delayOnTouchOnly: true,
-    disabled: props.readonly,
-    ghostClass: 'board-ghost',
-    chosenClass: 'board-chosen',
-    dragClass: 'board-drag',
-    scrollSensitivity: 80,
-    onChoose(evt) {
-      origin = { parent: evt.item.parentNode!, next: evt.item.nextSibling }
-    },
-    onStart(evt) {
-      emit('drag', Number(evt.item.dataset.taskId))
-    },
-    onEnd(evt) {
-      lastDragEnd = Date.now()
-      const item = evt.item
-      const taskId = Number(item.dataset.taskId)
-      const statusId = Number((evt.to as HTMLElement).dataset.statusId)
-      const prevId = neighbour(item, 'previousElementSibling')
-      const nextId = neighbour(item, 'nextElementSibling')
-      if (origin) origin.parent.insertBefore(item, origin.next)
-      origin = null
-      emit('drag', null)
-      if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return
-      emit('move', { taskId, statusId, prevId, nextId })
-    },
-  })
-}
-
-function syncSortables() {
-  for (const [id, entry] of sortables) {
-    if (columnEls.get(id) !== entry.el) {
-      entry.sortable.destroy()
-      sortables.delete(id)
-    }
-  }
-  for (const [id, el] of columnEls) {
-    const entry = sortables.get(id)
-    if (entry) entry.sortable.option('disabled', !!props.readonly)
-    else sortables.set(id, { el, sortable: createSortable(el) })
-  }
-}
-
-onMounted(syncSortables)
-watch(() => [props.statuses.map((s) => s.id).join(), props.readonly], syncSortables, { flush: 'post' })
-onBeforeUnmount(() => {
-  for (const { sortable } of sortables.values()) sortable.destroy()
-  sortables.clear()
+const { setContainer, justDropped } = useTaskDragDrop({
+  group: 'board',
+  disabled: () => !!props.readonly,
+  classes: { ghost: 'board-ghost', chosen: 'board-chosen', drag: 'board-drag' },
+  onMove: (move) => emit('move', move),
+  onDrag: (taskId) => emit('drag', taskId),
 })
 
 function open(task: TaskDTO) {
   // A drop can be followed by a stray click on the card underneath the pointer.
-  if (Date.now() - lastDragEnd < 250) return
+  if (justDropped()) return
   emit('open', task)
 }
 
@@ -152,7 +74,7 @@ function created(task: TaskDTO) {
       </header>
 
       <div
-        :ref="(el) => setColumnEl(status.id, el)"
+        :ref="(el) => setContainer(status.id, el)"
         :data-status-id="status.id"
         class="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
         :class="status.isDone && 'opacity-80'"

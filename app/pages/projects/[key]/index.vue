@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import type { TaskMove } from '~/components/project/Board.vue'
+import type { TaskMove } from '~/composables/taskDragDrop'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -57,12 +57,18 @@ async function moveTask({ taskId, statusId, prevId, nextId }: TaskMove) {
   if (!board.value) return
   const task = board.value.tasks.find((t) => t.id === taskId)
   if (!task) return
-  const column = board.value.tasks.filter((t) => t.statusId === statusId && t.id !== taskId)
-  const prev = prevId === null ? undefined : column.find((t) => t.id === prevId)
-  const next = nextId === null ? undefined : column.find((t) => t.id === nextId)
-  // Without visible neighbours (empty or filtered column, or a status change from the list) the task goes last.
-  const position =
-    prev || next ? positionBetween(prev?.position, next?.position) : positionBetween(column.reduce<number | undefined>((max, t) => (max === undefined || t.position > max ? t.position : max), undefined))
+  // Neighbours come from what was visible; the position is computed in the full column (hidden, filtered-out tasks
+  // included), so the task lands directly after its visible predecessor — or directly before its visible successor
+  // when dropped first — and never jumps over tasks the filter hid.
+  const column = board.value.tasks
+    .filter((t) => t.statusId === statusId && t.parentId === null && t.id !== taskId)
+    .sort((a, b) => a.position - b.position || a.id - b.id)
+  const prevIndex = prevId === null ? -1 : column.findIndex((t) => t.id === prevId)
+  const nextIndex = nextId === null ? -1 : column.findIndex((t) => t.id === nextId)
+  let position: number
+  if (prevIndex !== -1) position = positionBetween(column[prevIndex]!.position, column[prevIndex + 1]?.position)
+  else if (nextIndex !== -1) position = positionBetween(column[nextIndex - 1]?.position, column[nextIndex]!.position)
+  else position = positionBetween(column.at(-1)?.position) // empty column or a status change from the list menu: last
 
   const before = { statusId: task.statusId, position: task.position }
   Object.assign(task, { statusId, position })

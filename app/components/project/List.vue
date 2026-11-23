@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { TaskMove } from './Board.vue'
+import type { TaskMove } from '~/composables/taskDragDrop'
 
 const props = defineProps<{
   projectKey: string
@@ -29,6 +29,19 @@ const groups = computed(() =>
     .sort((a, b) => a.position - b.position)
     .map((status) => ({ status, tasks: sortTasks(props.tasks.filter((t) => t.statusId === status.id), sort.value) })),
 )
+
+// Reordering only means something in manual order; other sorts are computed views.
+const canDrag = computed(() => !props.readonly && sort.value === 'manual')
+const { setContainer, justDropped } = useTaskDragDrop({
+  group: 'list',
+  disabled: () => !canDrag.value,
+  handle: '[data-drag-handle]',
+  classes: { ghost: 'list-ghost', drag: 'list-drag' },
+  onMove: (move) => emit('move', move),
+})
+function open(task: TaskDTO) {
+  if (!justDropped()) emit('open', task)
+}
 
 const collapsed = ref(new Set<number>())
 function toggle(id: number) {
@@ -92,12 +105,26 @@ function statusItems(task: TaskDTO): DropdownMenuItem[] {
           </UTooltip>
         </div>
 
-        <ul v-if="!collapsed.has(status.id)" class="divide-y divide-default">
+        <ul
+          v-if="!collapsed.has(status.id)"
+          :ref="(el) => setContainer(status.id, el)"
+          :data-status-id="status.id"
+          class="min-h-9 divide-y divide-default"
+        >
           <li
             v-for="task in groupTasks"
             :key="task.id"
+            :data-task-id="task.id"
             class="group relative flex items-center gap-3 px-4 py-2 transition-colors hover:bg-elevated/50 focus-within:bg-elevated/50 sm:px-6"
           >
+            <span
+              v-if="canDrag"
+              data-drag-handle
+              class="absolute inset-y-0 left-0 z-2 hidden w-4 cursor-grab items-center justify-center text-dimmed opacity-0 transition group-hover:opacity-100 active:cursor-grabbing sm:flex"
+              aria-hidden="true"
+            >
+              <UIcon name="i-lucide-grip-vertical" class="size-3.5" />
+            </span>
             <UDropdownMenu v-if="!readonly" :items="statusItems(task)" :content="{ align: 'start' }">
               <UButton
                 :icon="statusIcon(status)"
@@ -118,7 +145,7 @@ function statusItems(task: TaskDTO): DropdownMenuItem[] {
               type="button"
               class="min-w-0 flex-1 truncate text-left text-sm text-highlighted before:absolute before:inset-0 focus-visible:outline-none focus-visible:before:outline-2 focus-visible:before:-outline-offset-2 focus-visible:before:outline-primary"
               :class="status.isDone && 'text-muted line-through decoration-muted'"
-              @click="emit('open', task)"
+              @click="open(task)"
             >
               <span class="me-1.5 font-mono text-xs text-dimmed sm:hidden">{{ task.ref }}</span>{{ task.title }}
             </button>
@@ -167,3 +194,15 @@ function statusItems(task: TaskDTO): DropdownMenuItem[] {
     </div>
   </div>
 </template>
+
+<style>
+/* Applied by Sortable at runtime; global because the drag preview is appended to <body>. */
+.list-ghost {
+  opacity: 0.4;
+}
+.list-drag {
+  box-shadow: 0 10px 24px -6px rgb(0 0 0 / 0.25);
+  background: var(--ui-bg);
+  opacity: 1 !important;
+}
+</style>
