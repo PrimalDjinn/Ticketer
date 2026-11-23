@@ -5,6 +5,8 @@
  */
 const { user, fetch: refreshSession } = useUserSession()
 const toast = useToast()
+/** `floating`: round button in the corner (sign-in pages). `inline`: icon button for the app's top bar. */
+const props = withDefaults(defineProps<{ variant?: 'floating' | 'inline' }>(), { variant: 'floating' })
 const open = ref(false)
 const chats = ref<ChatDTO[]>([])
 const activeId = ref<string | null>(null)
@@ -110,11 +112,22 @@ function preview(chat: ChatDTO) {
 </script>
 
 <template>
-  <div class="fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
-    <UPopover v-model:open="open" :content="{ side: 'top', align: 'end', sideOffset: 12 }" :ui="{ content: 'w-[calc(100vw-2rem)] sm:w-96 p-0 overflow-hidden' }">
-      <UChip :show="totalUnread > 0" :text="totalUnread" color="error" size="3xl">
+  <div :class="props.variant === 'floating' ? 'fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6' : 'contents'">
+    <UPopover
+      v-model:open="open"
+      :content="props.variant === 'floating' ? { side: 'top', align: 'end', sideOffset: 12 } : { side: 'bottom', align: 'end', sideOffset: 8 }"
+      :ui="{ content: 'w-[calc(100vw-2rem)] sm:w-96 p-0 overflow-hidden' }"
+    >
+      <UChip v-if="props.variant === 'floating'" :show="totalUnread > 0" :text="totalUnread" color="error" size="3xl">
         <UButton size="xl" class="rounded-full shadow-lg" :icon="open ? 'i-lucide-x' : 'i-lucide-message-circle'" aria-label="Support chat" />
       </UChip>
+      <UTooltip v-else text="Messages">
+        <UButton color="neutral" variant="ghost" square aria-label="Messages">
+          <UChip :show="totalUnread > 0" color="error" inset>
+            <UIcon name="i-lucide-message-circle" class="size-5 shrink-0" />
+          </UChip>
+        </UButton>
+      </UTooltip>
 
       <template #content>
         <div class="flex h-[min(32rem,70vh)] flex-col">

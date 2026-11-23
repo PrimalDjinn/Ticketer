@@ -32,6 +32,9 @@ const connection = computed(() => {
           </span>
         </UTooltip>
       </ClientOnly>
+      <ClientOnly>
+        <ChatWidget variant="inline" />
+      </ClientOnly>
       <UTooltip text="Notifications">
         <UButton color="neutral" variant="ghost" square aria-label="Notifications" @click="open = true">
           <UChip :show="items.length > 0" color="error" inset>

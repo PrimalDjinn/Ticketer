@@ -145,7 +145,6 @@ async function signOut() {
 
     <UDashboardSearch :groups="searchGroups" placeholder="Search projects, pages and actions…" />
     <NewProjectModal v-model:open="newProjectOpen" />
-    <ChatWidget />
   </UDashboardGroup>
 </template>
 
