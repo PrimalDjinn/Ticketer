@@ -4,11 +4,11 @@ const props = defineProps<{
   labels: LabelDTO[]
   members: PublicUser[]
   done?: boolean
+  readonly?: boolean
 }>()
-defineEmits<{ open: [task: TaskDTO] }>()
+defineEmits<{ open: [task: TaskDTO]; assign: [assigneeId: string | null] }>()
 
 const taskLabels = computed(() => props.task.labelIds.map((id) => props.labels.find((l) => l.id === id)).filter((l): l is LabelDTO => !!l))
-const assignee = computed(() => props.members.find((m) => m.id === props.task.assigneeId) ?? null)
 const due = computed(() => dueState(props.task.dueDate, props.done))
 const priority = computed(() => priorityMeta[props.task.priority])
 const blockedText = computed(() => `Blocked by ${props.task.blockedByCount} open ${props.task.blockedByCount === 1 ? 'task' : 'tasks'}`)
@@ -16,19 +16,18 @@ const repeatText = computed(() => `Repeats ${repeatLabel(props.task.repeat, prop
 </script>
 
 <template>
-  <button
-    type="button"
+  <!-- A stretched button opens the task; the assignee menu sits above it so both stay clickable. -->
+  <div
     :data-task-id="task.id"
-    class="group flex w-full flex-col gap-2 rounded-md border border-default bg-default p-2.5 text-left shadow-xs transition hover:border-accented hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+    class="group relative flex w-full flex-col gap-2 rounded-md border border-default bg-default p-2.5 text-left shadow-xs transition hover:border-accented hover:shadow-sm focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-primary"
     :class="done && 'opacity-70'"
-    @click="$emit('open', task)"
   >
     <div class="flex items-start gap-2">
-      <div class="min-w-0 flex-1">
-        <p class="font-mono text-[11px] leading-4 text-dimmed">{{ task.ref }}</p>
-        <p class="line-clamp-2 text-sm leading-5 font-medium text-highlighted" :class="done && 'line-through decoration-muted'">{{ task.title }}</p>
-      </div>
-      <UAvatar v-if="assignee" :alt="assignee.name" size="2xs" class="mt-0.5 shrink-0" :title="assignee.name" />
+      <button type="button" class="min-w-0 flex-1 text-left before:absolute before:inset-0 before:rounded-md focus-visible:outline-none" @click="$emit('open', task)">
+        <span class="block font-mono text-[11px] leading-4 text-dimmed">{{ task.ref }}</span>
+        <span class="line-clamp-2 text-sm leading-5 font-medium text-highlighted" :class="done && 'line-through decoration-muted'">{{ task.title }}</span>
+      </button>
+      <ProjectAssigneeMenu :task="task" :members="members" :readonly="readonly" class="mt-0.5" @assign="(id) => $emit('assign', id)" />
     </div>
 
     <div v-if="(task.blockedByCount > 0 && !done) || task.repeat || task.priority !== 'none' || taskLabels.length || task.dueDate || task.subtaskCount || task.commentCount || task.attachmentCount" class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
@@ -79,5 +78,5 @@ const repeatText = computed(() => `Repeats ${repeatLabel(props.task.repeat, prop
         {{ task.attachmentCount }}
       </span>
     </div>
-  </button>
+  </div>
 </template>

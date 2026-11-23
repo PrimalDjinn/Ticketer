@@ -46,6 +46,31 @@ onMounted(() => {
   if (route.hash) nextTick(() => document.querySelector(route.hash)?.scrollIntoView({ behavior: 'smooth' }))
 })
 
+// --- Assignment (admins assign tickets to support staff) ---
+const { data: staff } = await useFetch<PublicUser[]>('/api/members', {
+  default: () => [],
+  immediate: !!user.value?.isAdmin,
+  transform: (people) => people.filter((p) => p.isAdmin),
+})
+const staffItems = computed(() => [
+  { label: 'Unassigned', value: null, icon: 'i-lucide-user-x' },
+  ...staff.value.map((p) => ({ label: p.id === user.value?.id ? `${p.name} (you)` : p.name, value: p.id, avatar: { text: initials(p.name) } })),
+])
+const assigning = ref(false)
+async function assign(assigneeId: string | null) {
+  if (!ticket.value || assigneeId === ticket.value.assigneeId) return
+  assigning.value = true
+  try {
+    const updated = await $fetch<TicketDTO>(`/api/tickets/${id.value}`, { method: 'PATCH', body: { assigneeId } })
+    Object.assign(ticket.value, updated)
+    toast.add({ title: assigneeId ? `Assigned to ${updated.assigneeName}` : 'Unassigned', color: 'success', icon: 'i-lucide-user-check' })
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  } finally {
+    assigning.value = false
+  }
+}
+
 const updating = ref<TicketStatus | null>(null)
 async function setStatus(status: TicketStatus) {
   updating.value = status
@@ -163,6 +188,38 @@ async function copyReference() {
                 <dd class="mt-0.5 flex items-center gap-2 text-highlighted">
                   <UAvatar :text="initials(ticket.creatorName ?? '?')" size="2xs" />
                   {{ ticket.creatorName ?? 'Unknown' }}
+                </dd>
+              </div>
+              <div>
+                <dt class="flex items-center justify-between text-muted">
+                  Assignee
+                  <UButton
+                    v-if="user?.isAdmin && ticket.assigneeId !== user.id"
+                    size="xs"
+                    variant="link"
+                    color="primary"
+                    label="Assign to me"
+                    class="p-0"
+                    :loading="assigning"
+                    @click="assign(user.id)"
+                  />
+                </dt>
+                <dd class="mt-1">
+                  <USelectMenu
+                    v-if="user?.isAdmin"
+                    :model-value="ticket.assigneeId"
+                    :items="staffItems"
+                    value-key="value"
+                    :search-input="{ placeholder: 'Find support staff…' }"
+                    :loading="assigning"
+                    class="w-full"
+                    aria-label="Assign ticket"
+                    @update:model-value="(v: string | null) => assign(v)"
+                  />
+                  <span v-else class="flex items-center gap-2 text-highlighted">
+                    <UAvatar v-if="ticket.assigneeName" :text="initials(ticket.assigneeName)" size="2xs" />
+                    {{ ticket.assigneeName ?? 'Not picked up yet' }}
+                  </span>
                 </dd>
               </div>
               <div>

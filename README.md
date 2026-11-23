@@ -5,7 +5,7 @@ talks in threaded comments with @mentions and attachments, and a support chat is
 Everything updates live.
 
 Alongside the help desk sits Kaneo-style project tracking: projects with their own workflow columns, tasks with
-priority, assignee, dates, labels and subtasks, a drag-and-drop board and a grouped list (`C` new task, `Ctrl/Cmd+B`
+priority, assignee, dates, labels and subtasks, a drag-and-drop board and a grouped list (`C` new task, `I` assign the open task to yourself, `Ctrl/Cmd+B`
 toggle view, `Ctrl/Cmd+K` command palette), task comments with documents, an activity log, and "My tasks". Support
 tickets can be handed to a project as a linked task. Roles: admin, member, viewer (read-only).
 

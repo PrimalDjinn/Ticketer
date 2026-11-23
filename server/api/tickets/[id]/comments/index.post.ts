@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
       .set({ status: 'Pending', updatedAt: new Date(), resolvedAt: null })
       .where(eq(schema.tickets.id, id))
       .returning()
-    broadcastTicket(event, updated!, 'ticket.updated')
+    await broadcastTicket(event, updated!, 'ticket.updated')
   }
 
   const [dto] = await toCommentDTOs([comment!])

@@ -16,7 +16,7 @@ export async function namesFor(ids: (string | null | undefined)[]) {
   return map
 }
 
-export function toTicketDTO(t: TicketRow, creatorName?: string | null): TicketDTO {
+export function toTicketDTO(t: TicketRow, creatorName?: string | null, assigneeName?: string | null): TicketDTO {
   return {
     id: t.id,
     reference: t.reference,
@@ -25,6 +25,8 @@ export function toTicketDTO(t: TicketRow, creatorName?: string | null): TicketDT
     status: t.status,
     creatorId: t.creatorId,
     creatorName: creatorName ?? null,
+    assigneeId: t.assigneeId,
+    assigneeName: assigneeName ?? null,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     resolvedAt: t.resolvedAt,
@@ -32,8 +34,13 @@ export function toTicketDTO(t: TicketRow, creatorName?: string | null): TicketDT
 }
 
 export async function withCreatorNames(rows: TicketRow[]) {
-  const names = await namesFor(rows.map((r) => r.creatorId))
-  return rows.map((r) => toTicketDTO(r, r.creatorId ? names.get(r.creatorId) : null))
+  const names = await namesFor(rows.flatMap((r) => [r.creatorId, r.assigneeId]))
+  return rows.map((r) => toTicketDTO(r, r.creatorId ? names.get(r.creatorId) : null, r.assigneeId ? names.get(r.assigneeId) : null))
+}
+
+/** One ticket with both names resolved. */
+export async function ticketDTO(row: TicketRow) {
+  return (await withCreatorNames([row]))[0]!
 }
 
 /** Loads a ticket the current user may see: admins see everything, everyone else only their own tickets. */
@@ -66,7 +73,7 @@ export async function toCommentDTOs(rows: (typeof schema.comments.$inferSelect)[
 
 export async function ticketDetail(ticket: TicketRow): Promise<TicketDetailDTO> {
   const [names, files, commentRows] = await Promise.all([
-    namesFor([ticket.creatorId]),
+    namesFor([ticket.creatorId, ticket.assigneeId]),
     attachmentsFor('ticketId', [ticket.id]),
     db.select().from(schema.comments).where(eq(schema.comments.ticketId, ticket.id)).orderBy(asc(schema.comments.createdAt)),
   ])
@@ -77,7 +84,7 @@ export async function ticketDetail(ticket: TicketRow): Promise<TicketDetailDTO> 
     .innerJoin(schema.projectStatuses, eq(schema.tasks.statusId, schema.projectStatuses.id))
     .where(eq(schema.tasks.ticketId, ticket.id))
   return {
-    ...toTicketDTO(ticket, ticket.creatorId ? names.get(ticket.creatorId) : null),
+    ...toTicketDTO(ticket, ticket.creatorId ? names.get(ticket.creatorId) : null, ticket.assigneeId ? names.get(ticket.assigneeId) : null),
     attachments: files.get(ticket.id) ?? [],
     comments: await toCommentDTOs(commentRows),
     tasks: linked.map((t) => ({ id: t.id, ref: `${t.key}-${t.number}`, title: t.title, projectKey: t.key, number: t.number, status: t.status, isDone: t.isDone })),
@@ -91,6 +98,6 @@ export function ticketAudience(ticket: TicketRow) {
   return list
 }
 
-export function broadcastTicket(event: H3Event, ticket: TicketRow, type: 'ticket.created' | 'ticket.updated', creatorName?: string | null) {
-  publish(event, ticketAudience(ticket), { type, body: toTicketDTO(ticket, creatorName) })
+export async function broadcastTicket(event: H3Event, ticket: TicketRow, type: 'ticket.created' | 'ticket.updated') {
+  publish(event, ticketAudience(ticket), { type, body: await ticketDTO(ticket) })
 }

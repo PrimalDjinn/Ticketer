@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, like, lte, or, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNull, like, lte, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
@@ -10,6 +10,8 @@ const query = z.object({
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   mine: z.stringbool().optional(),
+  /** Admins: `me`, `none`, or a user id. */
+  assignee: z.string().max(64).optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -20,6 +22,9 @@ export default defineEventHandler(async (event) => {
 
   if (!user.isAdmin || input.mine) where.push(eq(t.creatorId, user.id))
   if (input.status) where.push(eq(t.status, input.status))
+  if (user.isAdmin && input.assignee) {
+    where.push(input.assignee === 'none' ? isNull(t.assigneeId) : eq(t.assigneeId, input.assignee === 'me' ? user.id : input.assignee))
+  }
   if (input.from) where.push(gte(t.createdAt, input.from))
   if (input.to) where.push(lte(t.createdAt, new Date(input.to.getTime() + 86_400_000 - 1)))
   if (input.q) {

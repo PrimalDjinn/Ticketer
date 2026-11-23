@@ -31,6 +31,13 @@ const status = computed(() => props.statuses.find((s) => s.id === props.task.sta
 const statusItems = computed(() => props.statuses.map((s) => ({ label: s.name, value: s.id, color: s.color, isDone: s.isDone })))
 const priorityItems = [...TASK_PRIORITIES].reverse().map((p) => ({ label: priorityMeta[p].label, value: p, icon: priorityMeta[p].icon }))
 const assignee = computed(() => props.members.find((m) => m.id === props.task.assigneeId))
+const { user: me } = useUserSession()
+const canTakeIt = computed(() => !props.readonly && !!me.value && props.task.assigneeId !== me.value.id && props.members.some((m) => m.id === me.value!.id))
+function takeIt() {
+  if (canTakeIt.value) emit('patch', { assigneeId: me.value!.id })
+}
+// "I" takes the open task, like Kaneo/Linear's assign-to-me.
+defineShortcuts({ i: takeIt })
 const assigneeItems = computed(() => [
   { label: 'Unassigned', value: UNASSIGNED, avatar: undefined },
   ...props.members.map((m) => ({ label: m.name, value: m.id, avatar: { text: initials(m.name) } })),
@@ -102,7 +109,7 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
     </dd>
 
     <dt class="text-muted">Assignee</dt>
-    <dd>
+    <dd class="flex items-center gap-1">
       <USelectMenu
         :model-value="task.assigneeId ?? UNASSIGNED"
         :items="assigneeItems"
@@ -121,6 +128,11 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
           <span class="truncate" :class="!assignee && 'text-muted'">{{ assignee?.name ?? 'Unassigned' }}</span>
         </span>
       </USelectMenu>
+      <UTooltip v-if="canTakeIt" text="Assign to me">
+        <UButton icon="i-lucide-user-check" size="xs" color="neutral" variant="ghost" aria-label="Assign to me" @click="takeIt">
+          <template #trailing><UKbd value="I" size="sm" class="hidden sm:inline-flex" /></template>
+        </UButton>
+      </UTooltip>
     </dd>
 
     <dt class="text-muted">Labels</dt>

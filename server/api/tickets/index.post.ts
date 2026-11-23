@@ -26,11 +26,11 @@ export default defineEventHandler(async (event) => {
     throw error
   }
 
-  broadcastTicket(event, ticket!, 'ticket.created', user.name)
+  await broadcastTicket(event, ticket!, 'ticket.created')
   await notify(
     event,
     (await adminIds()).filter((id) => id !== user.id),
     { type: 'ticket', message: urgency === 'Default' ? `${user.name} opened a ticket` : `${user.name} opened an ${urgency.toLowerCase()} ticket`, link: `/tickets/${ticket!.id}` },
   )
-  return toTicketDTO(ticket!, user.name)
+  return ticketDTO(ticket!)
 })

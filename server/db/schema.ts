@@ -53,11 +53,13 @@ export const tickets = sqliteTable(
       .notNull()
       .default('Open'),
     creatorId: text('creator_id').references(() => users.id, { onDelete: 'set null' }),
+    /** The support person handling the ticket. */
+    assigneeId: text('assignee_id').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
     resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
   },
-  (t) => [index('tickets_status_idx').on(t.status), index('tickets_creator_idx').on(t.creatorId)],
+  (t) => [index('tickets_status_idx').on(t.status), index('tickets_creator_idx').on(t.creatorId), index('tickets_assignee_idx').on(t.assigneeId)],
 )
 
 export const comments = sqliteTable(

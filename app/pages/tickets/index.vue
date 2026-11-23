@@ -17,6 +17,8 @@ const filtersSchema = z.object({
   q: z.string().optional().catch(undefined),
   from: z.string().optional().catch(undefined),
   to: z.string().optional().catch(undefined),
+  /** Admins: me, none, or a user id. */
+  assignee: z.string().max(64).optional().catch(undefined),
   page: z.coerce.number().int().min(1).catch(1).default(1),
 })
 const filters = computed(() => filtersSchema.parse(route.query))
@@ -76,20 +78,48 @@ const columns = computed<TableColumn<TicketDTO>[]>(() => [
   { accessorKey: 'info', header: 'Issue' },
   ...(user.value?.isAdmin ? [{ accessorKey: 'creatorName', header: 'From', meta: desktopOnly } as TableColumn<TicketDTO>] : []),
   { accessorKey: 'status', header: 'Status' },
+  ...(user.value?.isAdmin ? [{ accessorKey: 'assigneeName', header: 'Assignee', meta: desktopOnly } as TableColumn<TicketDTO>] : []),
   { accessorKey: 'urgency', header: 'Urgency', meta: desktopOnly },
   { accessorKey: 'createdAt', header: 'Opened', meta: desktopOnly },
   ...(user.value?.isAdmin ? [{ id: 'actions', header: () => h('span', { class: 'sr-only' }, 'Actions') } as TableColumn<TicketDTO>] : []),
 ])
 
-function actionsFor(ticket: TicketDTO) {
-  return TICKET_STATUSES.filter((s) => s !== ticket.status).map((s) => ({
-    label: `Mark ${statusMeta[s].label.toLowerCase()}`,
-    icon: statusMeta[s].icon,
-    onSelect: () => setStatus(ticket, s),
-  }))
+async function assign(ticket: TicketDTO, assigneeId: string | null) {
+  try {
+    const updated = await $fetch<TicketDTO>(`/api/tickets/${ticket.id}`, { method: 'PATCH', body: { assigneeId } })
+    Object.assign(ticket, updated)
+    toast.add({ title: assigneeId ? `Assigned to ${updated.assigneeName}` : 'Unassigned', color: 'success', icon: 'i-lucide-user-check' })
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
 }
 
-const hasFilters = computed(() => !!(filters.value.q || filters.value.from || filters.value.to))
+function actionsFor(ticket: TicketDTO) {
+  return [
+    TICKET_STATUSES.filter((s) => s !== ticket.status).map((s) => ({
+      label: `Mark ${statusMeta[s].label.toLowerCase()}`,
+      icon: statusMeta[s].icon,
+      onSelect: () => setStatus(ticket, s),
+    })),
+    [
+      ticket.assigneeId === user.value?.id
+        ? { label: 'Unassign', icon: 'i-lucide-user-x', onSelect: () => assign(ticket, null) }
+        : { label: 'Assign to me', icon: 'i-lucide-user-check', onSelect: () => assign(ticket, user.value!.id) },
+    ],
+  ]
+}
+
+const assigneeFilterItems = [
+  { label: 'Anyone', value: 'all' },
+  { label: 'Assigned to me', value: 'me' },
+  { label: 'Unassigned', value: 'none' },
+]
+const assigneeFilter = computed({
+  get: () => filters.value.assignee ?? 'all',
+  set: (value: string) => setFilters({ assignee: value === 'all' ? undefined : value }),
+})
+
+const hasFilters = computed(() => !!(filters.value.q || filters.value.from || filters.value.to || filters.value.assignee))
 </script>
 
 <template>
@@ -112,7 +142,8 @@ const hasFilters = computed(() => !!(filters.value.q || filters.value.from || fi
         <UInput v-model="searchText" icon="i-lucide-search" placeholder="Search tickets…" class="w-full sm:w-72" />
         <UInput :model-value="filters.from" type="date" aria-label="From date" @update:model-value="(v) => setFilters({ from: String(v) || undefined })" />
         <UInput :model-value="filters.to" type="date" aria-label="To date" @update:model-value="(v) => setFilters({ to: String(v) || undefined })" />
-        <UButton v-if="hasFilters" variant="ghost" color="neutral" icon="i-lucide-x" label="Clear" @click="searchText = ''; setFilters({ q: undefined, from: undefined, to: undefined })" />
+        <USelect v-if="user?.isAdmin" v-model="assigneeFilter" :items="assigneeFilterItems" icon="i-lucide-user" class="w-44" aria-label="Filter by assignee" />
+        <UButton v-if="hasFilters" variant="ghost" color="neutral" icon="i-lucide-x" label="Clear" @click="searchText = ''; setFilters({ q: undefined, from: undefined, to: undefined, assignee: undefined })" />
         <span class="ml-auto text-sm text-muted">{{ data.total }} ticket{{ data.total === 1 ? '' : 's' }}</span>
       </div>
 
@@ -134,6 +165,13 @@ const hasFilters = computed(() => !!(filters.value.q || filters.value.from || fi
         </template>
         <template #creatorName-cell="{ row }">
           <span class="text-sm">{{ row.original.creatorName ?? '—' }}</span>
+        </template>
+        <template #assigneeName-cell="{ row }">
+          <span v-if="row.original.assigneeName" class="flex items-center gap-2 text-sm">
+            <UAvatar :text="initials(row.original.assigneeName)" size="2xs" />
+            {{ row.original.assigneeName }}
+          </span>
+          <span v-else class="text-sm text-dimmed">—</span>
         </template>
         <template #status-cell="{ row }">
           <TicketStatusBadge :status="row.original.status" />

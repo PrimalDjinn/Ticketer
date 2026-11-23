@@ -33,6 +33,9 @@ export interface TicketDTO {
   status: TicketStatus
   creatorId: string | null
   creatorName?: string | null
+  /** Support person handling the ticket. */
+  assigneeId: string | null
+  assigneeName?: string | null
   createdAt: string | number | Date
   updatedAt: string | number | Date | null
   resolvedAt: string | number | Date | null

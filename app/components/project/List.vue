@@ -14,6 +14,7 @@ const emit = defineEmits<{
   open: [task: TaskDTO]
   move: [move: TaskMove]
   created: [task: TaskDTO]
+  assign: [task: TaskDTO, assigneeId: string | null]
 }>()
 
 const { filters, setFilters } = useTaskFilters()
@@ -54,7 +55,6 @@ function toggle(id: number) {
 const adding = ref<number | null>(null)
 
 const labelsById = computed(() => new Map(props.labels.map((l) => [l.id, l])))
-const membersById = computed(() => new Map(props.members.map((m) => [m.id, m])))
 
 const statusIcon = (status: StatusDTO) => (status.isDone ? 'i-lucide-circle-check' : 'i-lucide-circle')
 
@@ -179,9 +179,9 @@ function statusItems(task: TaskDTO): DropdownMenuItem[] {
               >
                 {{ formatDay(task.dueDate) }}
               </span>
-              <span class="inline-flex w-6 justify-center">
-                <UAvatar v-if="task.assigneeId && membersById.get(task.assigneeId)" :alt="membersById.get(task.assigneeId)!.name" size="2xs" :title="membersById.get(task.assigneeId)!.name" />
-                <UIcon v-else name="i-lucide-circle-user" class="size-4 text-dimmed" aria-label="Unassigned" />
+              <!-- The row's meta area ignores the pointer (the row button sits under it); the assignee menu opts back in. -->
+              <span class="pointer-events-auto inline-flex w-6 justify-center">
+                <ProjectAssigneeMenu :task="task" :members="members" :readonly="readonly" @assign="(id) => emit('assign', task, id)" />
               </span>
             </div>
           </li>

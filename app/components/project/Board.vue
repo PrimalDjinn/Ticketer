@@ -14,6 +14,7 @@ const emit = defineEmits<{
   created: [task: TaskDTO]
   /** Id of the task being dragged, or null when the drag ends. */
   drag: [taskId: number | null]
+  assign: [task: TaskDTO, assigneeId: string | null]
 }>()
 
 const columns = computed(() =>
@@ -86,8 +87,10 @@ function created(task: TaskDTO) {
           :labels="labels"
           :members="members"
           :done="status.isDone"
+          :readonly="readonly"
           :class="!readonly && 'cursor-grab active:cursor-grabbing'"
           @open="open"
+          @assign="(id) => emit('assign', task, id)"
         />
       </div>
 

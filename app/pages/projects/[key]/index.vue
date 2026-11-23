@@ -57,6 +57,17 @@ function upsert(task: TaskDTO) {
   else board.value.tasks.splice(index, 1, task)
 }
 
+async function assignTask(task: TaskDTO, assigneeId: string | null) {
+  const before = task.assigneeId
+  task.assigneeId = assigneeId
+  try {
+    upsert(await $fetch<TaskDTO>(`/api/tasks/${task.id}`, { method: 'PATCH', body: { assigneeId } }))
+  } catch (e) {
+    task.assigneeId = before
+    toast.add({ title: 'Could not change the assignee', description: errorMessage(e), color: 'error' })
+  }
+}
+
 async function moveTask({ taskId, statusId, prevId, nextId }: TaskMove) {
   if (!board.value) return
   const task = board.value.tasks.find((t) => t.id === taskId)
@@ -207,6 +218,7 @@ defineShortcuts({
           :readonly="readonly"
           @open="openTask"
           @move="moveTask"
+          @assign="assignTask"
           @created="upsert"
           @drag="(id) => (draggingId = id)"
         />
@@ -220,6 +232,7 @@ defineShortcuts({
           :readonly="readonly"
           @open="openTask"
           @move="moveTask"
+          @assign="assignTask"
           @created="upsert"
         />
         <ProjectCalendar
