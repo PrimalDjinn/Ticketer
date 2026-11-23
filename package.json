@@ -27,6 +27,7 @@
     "@nuxt/ui": "^4.13.1",
     "@nuxthub/core": "^0.10.12",
     "@vueuse/core": "^14.4.0",
+    "consola": "^3.4.2",
     "drizzle-orm": "^0.45.4",
     "nuxt": "^4.6.4",
     "nuxt-auth-utils": "^0.6.2",

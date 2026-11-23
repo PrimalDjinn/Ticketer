@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm'
 import { db } from 'hub:db'
 
+const log = useLogger('migrations')
+
 /**
  * Node/Bun production: apply pending migrations to the SQLite file on boot. The file lives on the deployment volume,
  * which the build machine never sees, so NuxtHub's build-time migration step is disabled for this target.
@@ -14,7 +16,7 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Nitro does not await async plugins, so hold requests until the schema is in place.
   const ready = migrate().catch((error) => {
-    console.error('[migrations] failed', error)
+    log.error('failed', error)
     throw error
   })
   nitroApp.hooks.hook('request', () => ready)
@@ -46,6 +48,6 @@ async function migrate() {
       for (const statement of statements) await tx.run(sql.raw(statement))
       await tx.run(sql`INSERT INTO _hub_migrations (name) VALUES (${name})`)
     })
-    console.info(`[migrations] applied ${name}`)
+    log.success(`applied ${name}`)
   }
 }

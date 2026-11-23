@@ -1,0 +1,22 @@
+# Local production-like run: builds the image from this checkout.
+#   NUXT_APP_SECRET=$(openssl rand -base64 32) docker compose up --build
+services:
+  ticketer:
+    build: .
+    restart: unless-stopped
+    secrets:
+      - nuxt_app_secret
+    environment:
+      NUXT_MAIL_FROM: ${NUXT_MAIL_FROM:-}
+      NUXT_MAIL_SMTP_URL: ${NUXT_MAIL_SMTP_URL:-}
+    ports:
+      - "${TICKETER_PORT:-3000}:3000"
+    volumes:
+      - ticketer_data:/app/.data
+
+volumes:
+  ticketer_data:
+
+secrets:
+  nuxt_app_secret:
+    environment: NUXT_APP_SECRET

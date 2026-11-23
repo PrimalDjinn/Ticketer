@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     })
     const link = `${getRequestURL(event).origin}/auth/reset/${token}`
     const sending = sendMail(event, { to: email, subject: 'Reset your Ticketer password', ...passwordResetMail(link) }).catch(
-      (error) => console.error('[mail] password reset failed', error),
+      (error) => useLogger('mail').error('password reset mail failed', error),
     )
     event.waitUntil(sending)
   }

@@ -7,11 +7,16 @@ import { fileURLToPath } from 'node:url'
 const preset = process.env.NITRO_PRESET || ''
 const isCloudflare = preset.startsWith('cloudflare')
 
-// Cloudflare resource identifiers. These are not secrets; override them per environment if you fork the app.
+// Cloudflare resources come from the environment so each deployment (or fork) brings its own account's IDs.
+// Create them with `wrangler d1 create ticketer` and `wrangler r2 bucket create ticketer-files`.
 const cloudflare = {
   workerName: process.env.CF_WORKER_NAME || 'ticketer',
-  d1DatabaseId: process.env.CF_D1_DATABASE_ID || 'f1d2b5d3-0000-0000-0000-000000000000',
+  d1DatabaseId: process.env.CF_D1_DATABASE_ID || '',
   r2Bucket: process.env.CF_R2_BUCKET || 'ticketer-files',
+}
+if (isCloudflare && !cloudflare.d1DatabaseId) {
+  console.warn('[ticketer] CF_D1_DATABASE_ID is not set: the build works, but `wrangler deploy` needs a real D1 database id.')
+  cloudflare.d1DatabaseId = '00000000-0000-0000-0000-000000000000'
 }
 
 export default defineNuxtConfig({

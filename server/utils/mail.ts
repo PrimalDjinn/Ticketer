@@ -1,5 +1,7 @@
 import type { H3Event } from 'h3'
 
+const log = useLogger('mail')
+
 /** Cloudflare `send_email` binding (subset used here). */
 interface SendEmailBinding {
   send(message: { from: string; to: string; subject: string; text: string; html: string }): Promise<unknown>
@@ -21,7 +23,7 @@ export async function sendMail(event: H3Event, mail: Mail) {
   const env = event.context.cloudflare?.env as { EMAIL?: SendEmailBinding } | undefined
 
   if (!config.from) {
-    console.info(`[mail] NUXT_MAIL_FROM is not set. Would send to ${mail.to}: ${mail.subject}\n${mail.text}`)
+    log.info('NUXT_MAIL_FROM is not set; not sending', { to: mail.to, subject: mail.subject, text: mail.text })
     return
   }
 
@@ -36,7 +38,7 @@ export async function sendMail(event: H3Event, mail: Mail) {
     return
   }
 
-  console.info(`[mail] No mail transport configured. Would send to ${mail.to}: ${mail.subject}\n${mail.text}`)
+  log.info('no mail transport configured; not sending', { to: mail.to, subject: mail.subject, text: mail.text })
 }
 
 export function passwordResetMail(link: string) {

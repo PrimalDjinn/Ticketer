@@ -50,7 +50,7 @@ export async function storeAttachments(folder: string, files: File[], owner: Own
 }
 
 export async function deleteBlobs(pathnames: string[]) {
-  if (pathnames.length) await blob.del(pathnames).catch((error) => console.error('[files] delete failed', error))
+  if (pathnames.length) await blob.del(pathnames).catch((error) => useLogger('files').error('blob delete failed', error))
 }
 
 export function toAttachmentDTO(a: typeof schema.attachments.$inferSelect): AttachmentDTO {

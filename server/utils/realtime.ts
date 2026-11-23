@@ -14,6 +14,8 @@ import type { H3Event } from 'h3'
 import type { Peer } from 'crossws'
 import { ulid } from 'ulid'
 
+const log = useLogger('realtime')
+
 type Channel = string
 
 interface Sink {
@@ -150,9 +152,9 @@ export function publish(event: H3Event, targets: Channel | Channel[], payload: R
     const task = cf
       .durableFetch(request)
       .then((res) => {
-        if (!res.ok) console.error('[realtime] publish rejected', res.status)
+        if (!res.ok) log.error('publish rejected by durable object', { status: res.status })
       })
-      .catch((error) => console.error('[realtime] publish failed', error))
+      .catch((error) => log.error('publish failed', error))
     event.waitUntil(task)
     return
   }

@@ -1,2 +1,13 @@
 node_modules
+.nuxt
+.output
+.data
+.wrangler
+.git
+.github
+.devcontainer
 .env
+.env.*
+*.log
+Dockerfile
+docker-compose*.yml
