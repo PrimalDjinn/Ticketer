@@ -13,6 +13,8 @@ const cloudflare = {
   workerName: process.env.CF_WORKER_NAME || 'ticketer',
   d1DatabaseId: process.env.CF_D1_DATABASE_ID || '',
   r2Bucket: process.env.CF_R2_BUCKET || 'ticketer-files',
+  /** Optional hostname to serve the Worker on, e.g. tickets.example.com (its zone must be on the same account). */
+  customDomain: process.env.CF_CUSTOM_DOMAIN || '',
 }
 if (isCloudflare && !cloudflare.d1DatabaseId) {
   console.warn('[ticketer] CF_D1_DATABASE_ID is not set: the build works, but `wrangler deploy` needs a real D1 database id.')
@@ -54,8 +56,6 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // Shared secret for Worker -> Durable Object publish calls. Only checked on Cloudflare.
-    realtimeSecret: '',
     // Initial admin, created on first start when no account has this email (NUXT_ADMIN_EMAIL, NUXT_ADMIN_PASSWORD,
     // NUXT_ADMIN_NAME). An existing account is never modified. See also `pnpm admin`.
     admin: {
@@ -95,6 +95,7 @@ export default defineNuxtConfig({
         },
         migrations: [{ tag: 'v1', new_sqlite_classes: ['$DurableObject'] }],
         send_email: [{ name: 'EMAIL' }],
+        ...(cloudflare.customDomain && { routes: [{ pattern: cloudflare.customDomain, custom_domain: true }] }),
       },
     },
   },
