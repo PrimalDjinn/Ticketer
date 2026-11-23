@@ -6,44 +6,30 @@ RUN groupadd --gid 1000 coder \
     && useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home coder || true \
     && echo "coder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/coder \
     && chmod 0440 /etc/sudoers.d/coder
-# Install Node.js
-RUN apt-get update && apt-get install -y curl \
-    && curl -sL https://deb.nodesource.com/setup_20.x | bash - \
+
+# Node.js 24 (matches CI and the production image). pnpm comes from corepack, pinned by package.json#packageManager.
+RUN apt-get update && apt-get install -y curl ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs \
+    && corepack enable \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pnpm
-RUN npm install -g pnpm@latest
-
-# Install other utilities and GitHub CLI
+# Tooling: git/gh for the repo, sqlite3 to inspect the local database in .data/db/sqlite.db.
 RUN apt-get update && apt-get install -y \
     git \
-    ssh-client \
     openssh-client \
     iproute2 \
     net-tools \
     iputils-ping \
     gh \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y \
-    libasound2-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create services directory
-RUN mkdir -p /workspaces/services && chown coder:coder /workspaces/services
 
 COPY ./scripts/setup/git.sh /usr/local/bin/setup-git.sh
-RUN chmod +x /usr/local/bin/setup-git.sh
-
 COPY ./scripts/setup/dev.sh /usr/local/bin/setup-dev.sh
-RUN chmod +x /usr/local/bin/setup-dev.sh
+RUN chmod +x /usr/local/bin/setup-git.sh /usr/local/bin/setup-dev.sh
 
-COPY ./scripts/install-node.sh /usr/local/bin/install-node.sh
-RUN chmod +x /usr/local/bin/install-node.sh
-
-COPY ./scripts/setup/postgres.sh /usr/local/bin/setup-postgres.sh
-RUN chmod +x /usr/local/bin/setup-postgres.sh
+# Named volumes copy ownership from the image on first mount; create the pnpm store dir as coder so installs can write.
+RUN mkdir -p /home/coder/.local/share/pnpm && chown -R coder:coder /home/coder/.local
 
 USER coder

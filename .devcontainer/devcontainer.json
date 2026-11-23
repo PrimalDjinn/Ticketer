@@ -6,9 +6,6 @@
   "shutdownAction": "stopCompose",
   "remoteUser": "coder",
   "features": {
-    "ghcr.io/devcontainers-extra/features/pnpm": {
-      "version": "latest",
-    },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1.10.1": {},
     "ghcr.io/devcontainers/features/github-cli:1.1.3": {},
     "ghcr.io/bascodes/devcontainer-features/desktop-novnc": {},
@@ -27,11 +24,6 @@
       "source": "${localEnv:HOME}/.gitconfig",
       "type": "bind",
       "target": "/home/coder/.gitconfig",
-    },
-    {
-      "source": "/dev/bus/usb",
-      "type": "bind",
-      "target": "/dev/bus/usb",
     },
     // Claude Code
     {
@@ -62,8 +54,14 @@
       "target": "/home/coder/.local/share/opencode",
     },
   ],
-  "privileged": true,
-  "postCreateCommand": "sudo /usr/local/bin/setup-postgres.sh; sudo /usr/local/bin/setup-dev.sh",
+    // Dependencies, Nuxt types, and the local SQLite database (migrations run on the first `pnpm dev`).
+  "postCreateCommand": "sudo /usr/local/bin/setup-dev.sh; corepack install && pnpm install",
+  // 3000: nuxt dev (Node + SQLite). 8787: wrangler dev against the Cloudflare build (D1/R2/Durable Object emulated).
+  "forwardPorts": [3000, 8787],
+  "portsAttributes": {
+    "3000": { "label": "Ticketer (nuxt dev)" },
+    "8787": { "label": "Ticketer (wrangler dev)" },
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -109,12 +107,7 @@
       "settings": {
         "files.eol": "\n",
         "telemetry.telemetryLevel": "off",
-        "rust-analyzer.linkedProjects": [
-          "apps/heylomeet/src-tauri/Cargo.toml",
-          "experiments/chat-e2ee/Cargo.toml",
-          "experiments/chat-e2ee/native-custody/Cargo.toml",
-          "packages/android-credential-store/Cargo.toml",
-        ],
+        "typescript.tsdk": "node_modules/typescript/lib",
       },
     },
     // https://github.com/coder/coder/blob/8b970e7ff37d3937ae963414276b9a442356c6f4/.devcontainer/devcontainer.json#L22
@@ -168,14 +161,9 @@
       ],
     },
   },
-  "postStartCommand": "sudo service postgresql start; sudo /usr/local/bin/setup-java.sh; bash /usr/local/bin/setup-git.sh; bash /usr/local/bin/install-node.sh",
+  "postStartCommand": "bash /usr/local/bin/setup-git.sh",
   "containerEnv": {
     "LANG": "en_US.UTF-8",
     "LC_ALL": "en_US.UTF-8",
-    "DB_HOST": "localhost",
-    "DB_PORT": "5432",
-    "DB_PASSWORD": "postgres",
-    "DB_NAME": "postgres",
-    "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/postgres",
   },
 }

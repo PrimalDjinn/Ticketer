@@ -7,13 +7,13 @@ services:
     command: /bin/bash -c "while true; do sleep 1; done"
     volumes:
       - ..:/workspaces/ticketer
-      - ../services:/workspaces/services
       # Mount SSH and Git config for Git authentication
       - ${HOME}/.ssh:/home/coder/.ssh
       - ${HOME}/.gitconfig:/home/coder/.gitconfig
-      - /dev/bus/usb:/dev/bus/usb
+      # Keep the pnpm store across rebuilds
+      - pnpm-store:/home/coder/.local/share/pnpm
     networks:
-      - finueva-dev
+      - ticketer-dev
     healthcheck:
       test: ["CMD", "ps", "aux"]
       interval: 5s
@@ -21,9 +21,10 @@ services:
       retries: 3
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    environment:
-      ADB_SERVER_SOCKET: tcp:host.docker.internal:5037
+
+volumes:
+  pnpm-store:
 
 networks:
-  finueva-dev:
+  ticketer-dev:
     driver: bridge
