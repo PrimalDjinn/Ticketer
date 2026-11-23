@@ -20,6 +20,6 @@ export async function notify(event: H3Event, userIds: string | string[], data: {
 }
 
 export async function adminIds() {
-  const rows = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.isAdmin, true))
+  const rows = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, 'admin'))
   return rows.map((r) => r.id)
 }

@@ -3,7 +3,8 @@ export interface CommentNode extends CommentDTO {
   replies: CommentNode[]
 }
 
-const props = defineProps<{ comment: CommentNode; ticketId: number; people: PublicUser[]; depth?: number }>()
+/** `endpoint` is the comments collection URL, e.g. /api/tickets/4/comments or /api/tasks/9/comments. */
+const props = defineProps<{ comment: CommentNode; endpoint: string; people: PublicUser[]; depth?: number; readonly?: boolean }>()
 const emit = defineEmits<{ posted: [comment: CommentDTO]; deleted: [id: number] }>()
 
 const { user } = useUserSession()
@@ -23,7 +24,7 @@ const segments = computed(() => {
 
 async function remove() {
   try {
-    await $fetch(`/api/tickets/${props.ticketId}/comments/${props.comment.id}`, { method: 'DELETE' })
+    await $fetch(`${props.endpoint}/${props.comment.id}`, { method: 'DELETE' })
     emit('deleted', props.comment.id)
   } catch (e) {
     toast.add({ color: 'error', title: errorMessage(e, 'Could not delete the comment') })
@@ -53,14 +54,14 @@ function onPosted(comment: CommentDTO) {
         </p>
         <AttachmentGrid v-if="comment.attachments.length" :attachments="comment.attachments" compact class="mt-2" />
         <div class="mt-1 flex gap-1">
-          <UButton v-if="(depth ?? 0) < 4" size="xs" variant="link" color="neutral" icon="i-lucide-reply" label="Reply" class="px-0" @click="replying = !replying" />
+          <UButton v-if="!readonly && (depth ?? 0) < 4" size="xs" variant="link" color="neutral" icon="i-lucide-reply" label="Reply" class="px-0" @click="replying = !replying" />
           <UButton v-if="canDelete" size="xs" variant="link" color="neutral" icon="i-lucide-trash-2" label="Delete" class="px-2" @click="remove" />
         </div>
 
-        <TicketCommentComposer
+        <CommentComposer
           v-if="replying"
           class="mt-2"
-          :ticket-id="ticketId"
+          :endpoint="endpoint"
           :people="people"
           :parent-id="comment.id"
           :placeholder="`Reply to ${comment.authorName}…`"
@@ -70,11 +71,12 @@ function onPosted(comment: CommentDTO) {
         />
 
         <div v-if="comment.replies.length" class="mt-4 space-y-4 border-l-2 border-default pl-4">
-          <TicketCommentItem
+          <CommentItem
             v-for="reply in comment.replies"
             :key="reply.id"
             :comment="reply"
-            :ticket-id="ticketId"
+            :endpoint="endpoint"
+            :readonly="readonly"
             :people="people"
             :depth="(depth ?? 0) + 1"
             @posted="(c) => emit('posted', c)"

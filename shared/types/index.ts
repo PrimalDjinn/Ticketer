@@ -1,5 +1,5 @@
 // Types shared by the Vue app and the Nitro server (auto-imported from `shared/types`).
-import type { TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
+import type { TASK_PRIORITIES, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
 
 export type TicketStatus = (typeof TICKET_STATUSES)[number]
 
@@ -9,9 +9,12 @@ export interface PublicUser {
   id: string
   name: string
   email: string | null
+  role: UserRole
   isAdmin: boolean
   isGuest: boolean
 }
+
+export type UserRole = 'admin' | 'member' | 'viewer'
 
 export interface AttachmentDTO {
   id: number
@@ -49,6 +52,8 @@ export interface CommentDTO {
 export interface TicketDetailDTO extends TicketDTO {
   attachments: AttachmentDTO[]
   comments: CommentDTO[]
+  /** Tasks created from this ticket (visible to members only). */
+  tasks: { id: number; ref: string; title: string; projectKey: string; number: number; status: string; isDone: boolean }[]
 }
 
 export interface MessageDTO {
@@ -97,7 +102,110 @@ export type RealtimeEvent =
   | { type: 'notification'; body: NotificationDTO }
   | { type: 'hello'; body: { clientId: string; transport: RealtimeTransport } }
   | { type: 'ping'; body: number }
+  | TaskRealtime
 
 export type RealtimeEventType = RealtimeEvent['type']
 export type RealtimeTransport = 'websocket' | 'sse' | 'poll'
 
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Projects and tasks
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type TaskPriority = (typeof TASK_PRIORITIES)[number]
+
+export interface StatusDTO {
+  id: number
+  projectId: number
+  name: string
+  color: string
+  position: number
+  isDone: boolean
+}
+
+export interface LabelDTO {
+  id: number
+  name: string
+  color: string
+}
+
+export interface ProjectDTO {
+  id: number
+  key: string
+  name: string
+  description: string
+  color: string
+  archivedAt: string | number | Date | null
+  createdAt: string | number | Date
+  statuses: StatusDTO[]
+  /** Open (not done) / total task counts, for the sidebar and project list. */
+  openCount: number
+  taskCount: number
+}
+
+/** A task as shown on boards and lists. */
+export interface TaskDTO {
+  id: number
+  projectId: number
+  /** e.g. "SUP-12" */
+  ref: string
+  number: number
+  title: string
+  statusId: number
+  priority: TaskPriority
+  assigneeId: string | null
+  parentId: number | null
+  ticketId: number | null
+  startDate: string | null
+  dueDate: string | null
+  position: number
+  labelIds: number[]
+  subtaskCount: number
+  subtaskDoneCount: number
+  commentCount: number
+  attachmentCount: number
+  createdAt: string | number | Date
+  updatedAt: string | number | Date | null
+  completedAt: string | number | Date | null
+}
+
+export interface TaskActivityDTO {
+  id: number
+  actorId: string | null
+  actorName: string
+  field: string
+  fromValue: string | null
+  toValue: string | null
+  createdAt: string | number | Date
+}
+
+export interface TaskDetailDTO extends TaskDTO {
+  description: string
+  creatorId: string | null
+  creatorName: string | null
+  project: { id: number; key: string; name: string; color: string }
+  attachments: AttachmentDTO[]
+  /** Uses the same shape as ticket comments; `ticketId` holds the task id. */
+  comments: CommentDTO[]
+  subtasks: TaskDTO[]
+  parent: { id: number; ref: string; title: string } | null
+  activity: TaskActivityDTO[]
+}
+
+/** Board payload: everything needed to render a project without further requests. */
+export interface ProjectBoardDTO {
+  project: ProjectDTO
+  tasks: TaskDTO[]
+  labels: LabelDTO[]
+  members: PublicUser[]
+}
+
+export type TaskRealtime =
+  | { type: 'task.created'; body: TaskDTO }
+  | { type: 'task.updated'; body: TaskDTO }
+  | { type: 'task.deleted'; body: { id: number; projectId: number } }
+  | { type: 'task.comment.created'; body: CommentDTO & { taskId: number } }
+  | { type: 'task.comment.deleted'; body: { id: number; taskId: number } }
+  | { type: 'project.updated'; body: ProjectDTO }
+  | { type: 'project.deleted'; body: { id: number } }
+  | { type: 'labels.updated'; body: LabelDTO[] }

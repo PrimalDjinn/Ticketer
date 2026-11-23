@@ -52,8 +52,11 @@ const POLL_HOLD_MS = 25_000
 const POLL_EXPIRE_MS = 70_000
 const HEARTBEAT_MS = 25_000
 
-export function channelsFor(user: { id: string; isAdmin: boolean }) {
+type ChannelUser = { id: string; isAdmin: boolean; isGuest?: boolean }
+
+export function channelsFor(user: ChannelUser) {
   const list = [channels.all, channels.user(user.id)]
+  if (!user.isGuest) list.push(channels.members)
   if (user.isAdmin) list.push(channels.admins)
   return list
 }
@@ -170,7 +173,7 @@ export function durableOf(peer: Peer): DurableLike | undefined {
   return (peer as unknown as { _internal?: { durable?: DurableLike } })._internal?.durable
 }
 
-export function attachWebSocket(peer: Peer, user: { id: string; isAdmin: boolean }) {
+export function attachWebSocket(peer: Peer, user: ChannelUser) {
   const list = channelsFor(user)
   const durable = durableOf(peer)
   if (durable) {
@@ -196,7 +199,7 @@ export function attachWebSocket(peer: Peer, user: { id: string; isAdmin: boolean
   peer.send(encode({ type: 'hello', body: { clientId: peer.id, transport: 'websocket' } }))
 }
 
-export function openEventStream(event: H3Event, user: { id: string; isAdmin: boolean }) {
+export function openEventStream(event: H3Event, user: ChannelUser) {
   const stream = createEventStream(event)
   const id = ulid()
   const sink = addSink({
@@ -221,7 +224,7 @@ export function openEventStream(event: H3Event, user: { id: string; isAdmin: boo
  * Long poll. The first request (no `client`) registers a queue and answers immediately with `hello`; later requests
  * return queued events at once, or wait up to 25s for the next one.
  */
-export async function poll(event: H3Event, user: { id: string; isAdmin: boolean }, clientId?: string) {
+export async function poll(event: H3Event, user: ChannelUser, clientId?: string) {
   let entry = clientId ? polls.get(clientId) : undefined
   if (entry && entry.sink.userId !== user.id) entry = undefined
 

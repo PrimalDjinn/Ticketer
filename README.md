@@ -4,6 +4,11 @@ A small internal help desk: people open tickets (with screenshots and documents)
 talks in threaded comments with @mentions and attachments, and a support chat is one click away — for guests too.
 Everything updates live.
 
+Alongside the help desk sits Kaneo-style project tracking: projects with their own workflow columns, tasks with
+priority, assignee, dates, labels and subtasks, a drag-and-drop board and a grouped list (`C` new task, `Ctrl/Cmd+B`
+toggle view, `Ctrl/Cmd+K` command palette), task comments with documents, an activity log, and "My tasks". Support
+tickets can be handed to a project as a linked task. Roles: admin, member, viewer (read-only).
+
 Built with Nuxt 4, Nuxt UI (Tailwind v4), Drizzle ORM through NuxtHub, and runs in two places from one codebase:
 
 | Target | Database | Files | Realtime |
@@ -33,8 +38,7 @@ The image runs the Node build. The SQLite database and uploads live on one volum
 export NUXT_APP_SECRET=$(openssl rand -base64 32)
 docker compose up --build                                   # build from this checkout
 
-# or run the published image
-export TICKETER_IMAGE=ghcr.io/<owner>/ticketer:latest
+# or run the published image (ghcr.io/primaldjinn/ticketer:latest by default)
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml --profile tunnel up -d   # + Cloudflare Tunnel (CLOUDFLARE_TUNNEL_TOKEN)
 ```

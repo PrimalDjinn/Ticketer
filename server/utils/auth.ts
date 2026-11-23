@@ -8,7 +8,8 @@ export function toPublicUser(user: typeof schema.users.$inferSelect): PublicUser
     id: user.id,
     name: displayName(user),
     email: user.email,
-    isAdmin: user.isAdmin,
+    role: user.role,
+    isAdmin: user.role === 'admin',
     isGuest: user.isGuest,
   }
 }
@@ -35,12 +36,24 @@ export async function requireMember(event: H3Event) {
   return user
 }
 
-/** Admin flag is re-read from the database so a demotion takes effect immediately. */
+/** The role is re-read from the database so promotions and demotions take effect immediately. */
+export async function currentRole(userId: string) {
+  const row = await db.query.users.findFirst({ where: eq(schema.users.id, userId), columns: { role: true, isGuest: true } })
+  return row && !row.isGuest ? row.role : null
+}
+
 export async function requireAdmin(event: H3Event) {
   const user = await requireMember(event)
-  const row = await db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { isAdmin: true } })
-  if (!row?.isAdmin) throw createError({ status: 403, message: 'Admins only' })
+  if ((await currentRole(user.id)) !== 'admin') throw createError({ status: 403, message: 'Admins only' })
   return user
+}
+
+/** Anyone who may change tasks and projects: admins and members, not viewers. */
+export async function requireEditor(event: H3Event) {
+  const user = await requireMember(event)
+  const role = await currentRole(user.id)
+  if (role !== 'admin' && role !== 'member') throw createError({ status: 403, message: 'Viewers cannot make changes' })
+  return { ...user, role }
 }
 
 /**
@@ -58,10 +71,6 @@ export async function ensureUser(event: H3Event) {
   return toPublicUser(guest!)
 }
 
-export async function isAdminUser(userId: string) {
-  const row = await db.query.users.findFirst({ where: eq(schema.users.id, userId), columns: { isAdmin: true } })
-  return !!row?.isAdmin
-}
 
 export function randomToken(bytes = 32) {
   const data = crypto.getRandomValues(new Uint8Array(bytes))

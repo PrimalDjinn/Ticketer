@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * Comment box with @mentions and file attachments. Typing `@` opens a picker of people who can see the ticket;
+ * Comment box with @mentions and file attachments, shared by tickets and tasks (`endpoint` is the comments URL). Typing `@` opens a picker of people who can see the ticket;
  * Enter/Tab picks the highlighted person, Ctrl/Cmd+Enter posts.
  */
 const props = defineProps<{
-  ticketId: number
+  endpoint: string
   people: PublicUser[]
   parentId?: number
   placeholder?: string
@@ -85,7 +85,7 @@ async function submit() {
       if (body.value.includes(`@${person.name}`)) form.append('mentions', person.id)
     }
     for (const file of files.value) form.append('files', file)
-    const comment = await $fetch<CommentDTO>(`/api/tickets/${props.ticketId}/comments`, { method: 'POST', body: form })
+    const comment = await $fetch<CommentDTO>(props.endpoint, { method: 'POST', body: form })
     body.value = ''
     files.value = []
     mentioned.value = new Map()

@@ -20,6 +20,9 @@ const connection = computed(() => {
     <template #leading>
       <UDashboardSidebarCollapse />
     </template>
+    <template v-if="$slots.title" #title>
+      <slot name="title" />
+    </template>
     <template #right>
       <slot name="right" />
       <ClientOnly>

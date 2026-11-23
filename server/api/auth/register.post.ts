@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     name: input.name,
     passwordHash: await hashPassword(input.password),
     isGuest: false,
-    isAdmin: !existingMember,
+    role: existingMember ? ('member' as const) : ('admin' as const),
   }
 
   const [user] = guestId

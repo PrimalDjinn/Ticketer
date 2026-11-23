@@ -1,13 +1,14 @@
 export function useNotifications() {
   const items = useState<NotificationDTO[]>('notifications', () => [])
   const { loggedIn } = useUserSession()
+  const request = useRequestFetch()
 
   async function refresh() {
     if (!loggedIn.value) {
       items.value = []
       return
     }
-    items.value = await $fetch<NotificationDTO[]>('/api/notifications').catch(() => items.value)
+    items.value = await request<NotificationDTO[]>('/api/notifications').catch(() => items.value)
   }
 
   async function markRead(id: number) {

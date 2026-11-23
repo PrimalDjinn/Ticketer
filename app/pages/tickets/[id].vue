@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommentNode } from '~/components/ticket/CommentItem.vue'
+import type { CommentNode } from '~/components/CommentItem.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -17,17 +17,7 @@ const { data: people } = await useFetch<PublicUser[]>(() => `/api/tickets/${id.v
 
 useSeoMeta({ title: () => `#${ticket.value ? shortRef(ticket.value.reference) : ''} · Ticketer` })
 
-const thread = computed<CommentNode[]>(() => {
-  const nodes = new Map<number, CommentNode>()
-  for (const c of ticket.value?.comments ?? []) nodes.set(c.id, { ...c, replies: [] })
-  const roots: CommentNode[] = []
-  for (const node of nodes.values()) {
-    const parent = node.parentId ? nodes.get(node.parentId) : undefined
-    if (parent) parent.replies.push(node)
-    else roots.push(node)
-  }
-  return roots
-})
+const thread = computed<CommentNode[]>(() => commentTree(ticket.value?.comments ?? []))
 
 function addComment(comment: CommentDTO) {
   if (!ticket.value || comment.ticketId !== ticket.value.id) return
@@ -35,12 +25,7 @@ function addComment(comment: CommentDTO) {
 }
 function removeComment(commentId: number) {
   if (!ticket.value) return
-  // Replies go with their parent.
-  const gone = new Set([commentId])
-  for (let grew = true; grew; ) {
-    grew = false
-    for (const c of ticket.value.comments) if (c.parentId && gone.has(c.parentId) && !gone.has(c.id)) (gone.add(c.id), (grew = true))
-  }
+  const gone = commentThreadIds(ticket.value.comments, commentId) // replies go with their parent
   ticket.value.comments = ticket.value.comments.filter((c) => !gone.has(c.id))
 }
 
@@ -86,6 +71,31 @@ async function deleteTicket() {
   }
 }
 
+// Support -> project hand-off
+const { active: projects, refresh: refreshProjects } = useProjects()
+if (user.value?.isAdmin) await refreshProjects()
+const handingOff = ref(false)
+const handOffItems = computed(() =>
+  projects.value.map((p) => ({ label: p.name, suffix: p.key, onSelect: () => createTask(p.key) })),
+)
+async function createTask(projectKey: string) {
+  handingOff.value = true
+  try {
+    const task = await $fetch<TaskDTO & { projectKey: string }>(`/api/tickets/${id.value}/task`, { method: 'POST', body: { projectKey } })
+    await refresh()
+    toast.add({
+      title: `Created ${task.ref}`,
+      icon: 'i-lucide-circle-check',
+      color: 'success',
+      actions: [{ label: 'Open', to: `/projects/${projectKey}/${task.number}`, variant: 'outline' }],
+    })
+  } catch (e) {
+    toast.add({ title: errorMessage(e, 'Could not create the task'), color: 'error' })
+  } finally {
+    handingOff.value = false
+  }
+}
+
 async function copyReference() {
   await navigator.clipboard.writeText(ticket.value!.reference)
   toast.add({ title: 'Reference copied', icon: 'i-lucide-copy-check' })
@@ -123,18 +133,18 @@ async function copyReference() {
 
             <p v-if="!thread.length" class="text-sm text-muted">No comments yet. Add context, ask a question, or attach a document.</p>
             <div v-else class="space-y-6">
-              <TicketCommentItem
+              <CommentItem
                 v-for="comment in thread"
                 :key="comment.id"
                 :comment="comment"
-                :ticket-id="ticket.id"
+                :endpoint="`/api/tickets/${ticket.id}/comments`"
                 :people="people"
                 @posted="addComment"
                 @deleted="removeComment"
               />
             </div>
 
-            <TicketCommentComposer :ticket-id="ticket.id" :people="people" @posted="addComment" />
+            <CommentComposer :endpoint="`/api/tickets/${ticket.id}/comments`" :people="people" @posted="addComment" />
           </section>
         </div>
 
@@ -164,6 +174,23 @@ async function copyReference() {
                 <dd class="mt-0.5 text-highlighted">{{ formatDateTime(ticket.resolvedAt) }}</dd>
               </div>
             </dl>
+          </UCard>
+
+          <UCard v-if="ticket.tasks.length || (user?.isAdmin && projects.length)" variant="subtle">
+            <p class="mb-3 text-sm font-medium text-highlighted">Tasks</p>
+            <ul v-if="ticket.tasks.length" class="mb-3 space-y-1.5">
+              <li v-for="t in ticket.tasks" :key="t.id">
+                <NuxtLink :to="`/projects/${t.projectKey}/${t.number}`" class="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-elevated">
+                  <UIcon :name="t.isDone ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" class="size-4 shrink-0" :class="t.isDone ? 'text-success' : 'text-muted'" />
+                  <span class="font-mono text-xs text-muted">{{ t.ref }}</span>
+                  <span class="min-w-0 flex-1 truncate">{{ t.title }}</span>
+                </NuxtLink>
+                <p class="ml-7 text-xs text-dimmed">{{ t.status }}</p>
+              </li>
+            </ul>
+            <UDropdownMenu v-if="user?.isAdmin && projects.length" :items="handOffItems" :content="{ align: 'start' }">
+              <UButton icon="i-lucide-folder-input" label="Create task in…" color="neutral" variant="outline" size="sm" block :loading="handingOff" />
+            </UDropdownMenu>
           </UCard>
 
           <UCard v-if="user?.isAdmin" variant="subtle">

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const recipient = await db.query.users.findFirst({ where: eq(schema.users.id, input.to) })
   if (!recipient) throw createError({ status: 404, message: 'That person no longer exists' })
   // Guests and regular users talk to support; only admins can start conversations with anyone.
-  if (!recipient.isAdmin && !user.isAdmin) {
+  if (recipient.role !== 'admin' && !user.isAdmin) {
     const existing = await db.query.chats.findFirst({ where: eq(schema.chats.id, chatIdFor(user.id, recipient.id)) })
     if (!existing) throw createError({ status: 403, message: 'You can only message support' })
   }
