@@ -8,7 +8,7 @@ else
 fi
 
 WAKATIME_CFG="$USER_HOME/.wakatime.cfg"
-WAKATIME_API_URL="https://waka.ifkafin.com/api"
+WAKATIME_API_URL="https://api.wakatime.com/api/v1/"
 
 log() {
   echo "$1"
@@ -309,22 +309,3 @@ fi
 chmod 600 "$WAKATIME_CFG"
 
 log "✅ WakaTime setup complete"
-
-ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-/usr/local/android}"
-sudo mkdir -p "$ANDROID_SDK_ROOT"
-SDK_OWNER="${SUDO_USER:-$(whoami)}"
-sudo chown -R "$SDK_OWNER:$SDK_OWNER" "$ANDROID_SDK_ROOT"
-sudo chmod -R u+rwX "$ANDROID_SDK_ROOT"
-
-export ANDROID_SDK_ROOT
-export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
-
-if command -v sdkmanager >/dev/null 2>&1; then
-  yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
-
-  yes | sdkmanager \
-    --sdk_root="$ANDROID_SDK_ROOT" \
-    --install "ndk;29.0.13846066"
-else
-  warn "sdkmanager not found — skipping Android NDK install"
-fi

@@ -3,7 +3,7 @@
 # bridge networks, so containers can reach it without exposing adb on the LAN.
 #
 # Usage:   ./start-adb.sh [network ...]      (default network: bridge)
-# Example: ./start-adb.sh hello-finueva_devcontainer_finueva-dev
+# Example: ./start-adb.sh ticketer_devcontainer_finueva-dev
 # Env:     ADB_PORT (default 5037)
 
 set -eo pipefail

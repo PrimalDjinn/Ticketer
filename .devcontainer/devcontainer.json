@@ -1,8 +1,8 @@
 {
-  "name": "Hello-Finueva App Dev Container",
+  "name": "Ticketer App Dev Container",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "workspaceFolder": "/workspaces/hello-finueva",
+  "workspaceFolder": "/workspaces/ticketer",
   "shutdownAction": "stopCompose",
   "remoteUser": "coder",
   "features": {
