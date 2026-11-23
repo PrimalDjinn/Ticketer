@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { TaskMove } from '~/composables/taskDragDrop'
+import type { TaskDates } from '~/utils/dates'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -19,14 +20,17 @@ const { data: board, error, refresh } = await useFetch<ProjectBoardDTO>(() => `/
 useSeoMeta({ title: () => `${board.value?.project.name ?? 'Project'} · Ticketer` })
 
 // --- URL state: view and open task -----------------------------------------------------------------------------------
-type View = 'board' | 'list'
+const viewQuery = z.enum(['board', 'list', 'calendar', 'gantt']).catch('board')
+type View = z.output<typeof viewQuery>
 const view = computed<View>({
-  get: () => (route.query.view === 'list' ? 'list' : 'board'),
-  set: (value) => router.replace({ query: { ...route.query, view: value === 'list' ? 'list' : undefined } }),
+  get: () => viewQuery.parse(route.query.view),
+  set: (value) => router.replace({ query: { ...route.query, view: value === 'board' ? undefined : value } }),
 })
 const viewItems = [
-  { label: 'Board', value: 'board', icon: 'i-lucide-square-kanban' },
+  { label: 'Board', value: 'board', icon: 'i-lucide-kanban' },
   { label: 'List', value: 'list', icon: 'i-lucide-list' },
+  { label: 'Calendar', value: 'calendar', icon: 'i-lucide-calendar' },
+  { label: 'Gantt', value: 'gantt', icon: 'i-lucide-gantt-chart' },
 ]
 
 const taskQuery = z.coerce.number().int().positive().nullable().catch(null)
@@ -77,6 +81,20 @@ async function moveTask({ taskId, statusId, prevId, nextId }: TaskMove) {
   } catch (e) {
     Object.assign(task, before)
     toast.add({ title: 'Could not move the task', description: errorMessage(e), color: 'error' })
+  }
+}
+
+/** Calendar and Gantt rescheduling: optimistic, rolled back with a toast when the server refuses. */
+async function rescheduleTask(task: TaskDTO, dates: TaskDates) {
+  const current = board.value?.tasks.find((t) => t.id === task.id)
+  if (!current) return
+  const before: TaskDates = { startDate: current.startDate, dueDate: current.dueDate }
+  Object.assign(current, dates)
+  try {
+    upsert(await $fetch<TaskDTO>(`/api/tasks/${task.id}`, { method: 'PATCH', body: dates }))
+  } catch (e) {
+    Object.assign(current, before)
+    toast.add({ title: 'Could not reschedule the task', description: errorMessage(e), color: 'error' })
   }
 }
 
@@ -193,7 +211,7 @@ defineShortcuts({
           @drag="(id) => (draggingId = id)"
         />
         <ProjectList
-          v-else
+          v-else-if="view === 'list'"
           :project-key="board.project.key"
           :statuses="statuses"
           :tasks="visibleTasks"
@@ -204,11 +222,32 @@ defineShortcuts({
           @move="moveTask"
           @created="upsert"
         />
+        <ProjectCalendar
+          v-else-if="view === 'calendar'"
+          :project-key="board.project.key"
+          :statuses="statuses"
+          :tasks="visibleTasks"
+          :members="board.members"
+          :readonly="readonly"
+          @open="openTask"
+          @reschedule="rescheduleTask"
+          @created="upsert"
+        />
+        <ProjectGantt
+          v-else
+          :statuses="statuses"
+          :tasks="visibleTasks"
+          :members="board.members"
+          :readonly="readonly"
+          @open="openTask"
+          @reschedule="rescheduleTask"
+        />
 
         <ProjectNewTaskModal
           v-if="!readonly"
           v-model:open="newTaskOpen"
           :project-key="board.project.key"
+          :fields="board.project.fields"
           :statuses="statuses"
           :members="board.members"
           :labels="board.labels"

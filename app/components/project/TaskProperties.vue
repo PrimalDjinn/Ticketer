@@ -1,12 +1,19 @@
 <script setup lang="ts">
 /** Properties sidebar of a task: every change is emitted as a PATCH body; the parent applies it optimistically. */
-export type TaskPatch = Partial<Pick<TaskDetailDTO, 'title' | 'description' | 'statusId' | 'priority' | 'assigneeId' | 'startDate' | 'dueDate' | 'labelIds'>>
+export type TaskPatch = Partial<
+  Pick<TaskDetailDTO, 'title' | 'description' | 'statusId' | 'priority' | 'assigneeId' | 'startDate' | 'dueDate' | 'labelIds' | 'repeat' | 'repeatInterval'>
+> & {
+  /** Custom field values by field id; `null` clears one. */
+  fields?: Record<number, FieldValue | null>
+}
 
 const props = defineProps<{
   task: TaskDetailDTO
   statuses: StatusDTO[]
   labels: LabelDTO[]
   members: PublicUser[]
+  /** The project's custom fields, in display order. */
+  fields?: FieldDTO[]
   readonly?: boolean
   /** Two property pairs per row (slide-over). */
   wide?: boolean
@@ -35,6 +42,8 @@ const dueTone = computed(() => {
   const state = dueState(props.task.dueDate, status.value?.isDone)
   return state === 'overdue' ? 'text-error' : state === 'soon' ? 'text-warning' : ''
 })
+
+const orderedFields = computed(() => [...(props.fields ?? [])].sort((a, b) => a.position - b.position))
 
 function setDate(field: 'startDate' | 'dueDate', event: Event) {
   const value = (event.target as HTMLInputElement).value || null
@@ -182,5 +191,35 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
         @change="setDate('dueDate', $event)"
       />
     </dd>
+
+    <dt class="flex items-center gap-1 self-start pt-1 text-muted">Repeat</dt>
+    <dd>
+      <ProjectRepeatPicker
+        :repeat="task.repeat"
+        :interval="task.repeatInterval"
+        :disabled="readonly"
+        inline
+        @change="(v) => emit('patch', v)"
+      />
+    </dd>
+
+    <template v-for="field in orderedFields" :key="field.id">
+      <dt class="flex min-w-0 items-center gap-1 text-muted" :class="field.type === 'multiselect' && 'self-start pt-1'">
+        <span class="truncate" :title="field.name">{{ field.name }}</span>
+        <template v-if="field.required">
+          <span class="text-error" aria-hidden="true">*</span>
+          <span class="sr-only">(required)</span>
+        </template>
+      </dt>
+      <dd class="min-w-0">
+        <ProjectFieldInput
+          :field="field"
+          :value="task.fieldValues[field.id]"
+          :disabled="readonly"
+          inline
+          @commit="(v) => emit('patch', { fields: { [field.id]: v } })"
+        />
+      </dd>
+    </template>
   </dl>
 </template>

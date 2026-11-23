@@ -11,6 +11,8 @@ const taskLabels = computed(() => props.task.labelIds.map((id) => props.labels.f
 const assignee = computed(() => props.members.find((m) => m.id === props.task.assigneeId) ?? null)
 const due = computed(() => dueState(props.task.dueDate, props.done))
 const priority = computed(() => priorityMeta[props.task.priority])
+const blockedText = computed(() => `Blocked by ${props.task.blockedByCount} open ${props.task.blockedByCount === 1 ? 'task' : 'tasks'}`)
+const repeatText = computed(() => `Repeats ${repeatLabel(props.task.repeat, props.task.repeatInterval).toLowerCase()}`)
 </script>
 
 <template>
@@ -29,7 +31,19 @@ const priority = computed(() => priorityMeta[props.task.priority])
       <UAvatar v-if="assignee" :alt="assignee.name" size="2xs" class="mt-0.5 shrink-0" :title="assignee.name" />
     </div>
 
-    <div v-if="task.priority !== 'none' || taskLabels.length || task.dueDate || task.subtaskCount || task.commentCount || task.attachmentCount" class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+    <div v-if="(task.blockedByCount > 0 && !done) || task.repeat || task.priority !== 'none' || taskLabels.length || task.dueDate || task.subtaskCount || task.commentCount || task.attachmentCount" class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+      <UTooltip v-if="task.blockedByCount > 0 && !done" :text="blockedText">
+        <span class="inline-flex items-center gap-0.5 text-error">
+          <UIcon name="i-lucide-lock" class="size-3.5" />
+          <span class="sr-only">{{ blockedText }}</span>
+        </span>
+      </UTooltip>
+      <UTooltip v-if="task.repeat" :text="repeatText">
+        <span class="inline-flex items-center">
+          <UIcon name="i-lucide-repeat" class="size-3.5" />
+          <span class="sr-only">{{ repeatText }}</span>
+        </span>
+      </UTooltip>
       <span v-if="task.priority !== 'none'" class="inline-flex items-center" :title="`Priority: ${priority.label}`">
         <UIcon :name="priority.icon" class="size-3.5" :class="priority.class" />
         <span class="sr-only">Priority: {{ priority.label }}</span>

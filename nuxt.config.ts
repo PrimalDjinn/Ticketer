@@ -56,6 +56,13 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Shared secret for Worker -> Durable Object publish calls. Only checked on Cloudflare.
     realtimeSecret: '',
+    // Initial admin, created on first start when no account has this email (NUXT_ADMIN_EMAIL, NUXT_ADMIN_PASSWORD,
+    // NUXT_ADMIN_NAME). An existing account is never modified. See also `pnpm admin`.
+    admin: {
+      email: '',
+      password: '',
+      name: 'admin',
+    },
     mail: {
       // Sender for password reset mail (NUXT_MAIL_FROM), e.g. "Ticketer <noreply@your-domain>". On Cloudflare the
       // domain must be onboarded to Email Sending. Unset = reset links are logged instead of mailed.

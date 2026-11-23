@@ -166,6 +166,9 @@ importers:
 
   .:
     dependencies:
+      '@dragdroptouch/drag-drop-touch':
+        specifier: ^2.0.3
+        version: 2.0.3
       '@iconify-json/lucide':
         specifier: ^1.2.147
         version: 1.2.158
@@ -482,6 +485,9 @@ packages:
   '@csstools/css-tokenizer@4.0.3':
     resolution: {integrity: sha512-gdkFe/Z4KU1q8Y5S3GYScXGcOnO56dgWwIs5+97Ij1VIKISItOIUlCXUq4VLbdnRclF+SSQ49sLsn3KeV111AA==}
     engines: {node: '>=20.19.0'}
+
+  '@dragdroptouch/drag-drop-touch@2.0.3':
+    resolution: {integrity: sha512-4Yv1+S2Yxs/5iYLZyZYobAlCvIJPN6TYBjvJDyI9kH30GfBxA+ffHgKK2l00EyyBlUpB10j8BWAbRsgXRtBbPw==}
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
@@ -5685,6 +5691,8 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.9
 
   '@csstools/css-tokenizer@4.0.3': {}
+
+  '@dragdroptouch/drag-drop-touch@2.0.3': {}
 
   '@drizzle-team/brocli@0.10.2': {}
 

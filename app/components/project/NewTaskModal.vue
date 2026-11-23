@@ -4,6 +4,8 @@ const props = defineProps<{
   statuses: StatusDTO[]
   members: PublicUser[]
   labels: LabelDTO[]
+  /** The project's custom fields; fetched with the project when not passed. */
+  fields?: FieldDTO[]
   defaultStatusId?: number | null
 }>()
 const emit = defineEmits<{ created: [task: TaskDTO] }>()
@@ -21,15 +23,48 @@ const blank = () => ({
   assigneeId: '', // '' = unassigned (select menus handle empty strings better than null)
   dueDate: '',
   labelIds: [] as number[],
+  repeat: null as TaskRepeat | null,
+  repeatInterval: null as number | null,
+  fields: {} as Record<number, FieldValue>,
 })
 const form = reactive(blank())
 const createMore = ref(false)
 const saving = ref(false)
 const titleInput = useTemplateRef<{ inputRef: HTMLInputElement | null }>('titleInput')
+/** Server-side validation message (e.g. "Fill in Environment"), shown above the custom fields. */
+const fieldError = ref('')
+const attempted = ref(false)
+
+// Custom fields: from the prop when the page passes them, otherwise read with the project when the dialog opens.
+const loadedFields = ref<FieldDTO[] | null>(null)
+const projectFields = computed(() => [...(props.fields ?? loadedFields.value ?? [])].sort((a, b) => a.position - b.position))
+async function loadFields() {
+  if (props.fields) return
+  try {
+    loadedFields.value = (await $fetch<ProjectBoardDTO>(`/api/projects/${props.projectKey}`)).project.fields
+  } catch {
+    // The server still enforces required fields; the error is surfaced on submit.
+  }
+}
+onRealtime('project.updated', (project) => {
+  if (!props.fields && project.key === props.projectKey) loadedFields.value = project.fields
+})
+const missingRequired = (field: FieldDTO) => field.required && isEmptyFieldValue(form.fields[field.id])
+function setField(field: FieldDTO, value: FieldValue | null) {
+  const next = { ...form.fields }
+  if (value === null) delete next[field.id]
+  else next[field.id] = value
+  form.fields = next
+  if (fieldError.value && !projectFields.value.some(missingRequired)) fieldError.value = ''
+}
 
 // Fresh form each time the modal opens (keeps the column it was opened from).
 watch(open, (isOpen) => {
-  if (isOpen) Object.assign(form, blank())
+  if (!isOpen) return
+  Object.assign(form, blank())
+  fieldError.value = ''
+  attempted.value = false
+  loadFields()
 })
 
 const statusItems = computed(() =>
@@ -54,6 +89,8 @@ async function submit() {
   const title = form.title.trim()
   if (!title || saving.value) return
   saving.value = true
+  attempted.value = true
+  fieldError.value = ''
   try {
     const task = await $fetch<TaskDTO>(`/api/projects/${props.projectKey}/tasks`, {
       method: 'POST',
@@ -65,6 +102,10 @@ async function submit() {
         assigneeId: form.assigneeId || null,
         dueDate: form.dueDate || null,
         labelIds: form.labelIds,
+        repeat: form.repeat,
+        repeatInterval: form.repeat === 'periodically' ? form.repeatInterval : null,
+        fields: form.fields,
+        requireFields: true,
       },
     })
     emit('created', task)
@@ -73,13 +114,17 @@ async function submit() {
       // Keep the picked status/assignee/labels for a run of similar tasks; clear the text.
       form.title = ''
       form.description = ''
+      attempted.value = false
       await nextTick()
       titleInput.value?.inputRef?.focus()
     } else {
       open.value = false
     }
   } catch (e) {
-    toast.add({ title: errorMessage(e), color: 'error' })
+    const message = errorMessage(e)
+    // Validation of custom fields is shown next to them; anything else goes to a toast.
+    if (projectFields.value.length && /^(Fill in|.*\bfield\b)/i.test(message)) fieldError.value = message
+    else toast.add({ title: message, color: 'error' })
   } finally {
     saving.value = false
   }
@@ -171,7 +216,40 @@ async function submit() {
             aria-label="Labels"
             :search-input="{ placeholder: 'Filter labels…' }"
           />
+
+          <ProjectRepeatPicker
+            :repeat="form.repeat"
+            :interval="form.repeatInterval"
+            variant="soft"
+            @change="(v) => ((form.repeat = v.repeat), (form.repeatInterval = v.repeatInterval))"
+          />
         </div>
+        <p v-if="form.repeat" class="text-xs text-dimmed">{{ REPEAT_HINT }}.</p>
+
+        <fieldset v-if="projectFields.length" class="space-y-2 border-t border-default pt-3">
+          <legend class="sr-only">Custom fields</legend>
+          <UAlert v-if="fieldError" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="fieldError" :ui="{ root: 'py-2', title: 'text-sm' }" role="alert" />
+          <div class="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-sm">
+            <template v-for="field in projectFields" :key="field.id">
+              <span class="flex min-w-0 items-center gap-1 text-muted" :class="field.type === 'multiselect' && 'self-start pt-1'">
+                <UIcon :name="fieldTypeMeta[field.type].icon" class="size-3.5 shrink-0 text-dimmed" />
+                <span class="truncate" :title="field.name">{{ field.name }}</span>
+                <template v-if="field.required">
+                  <span class="text-error" aria-hidden="true">*</span>
+                  <span class="sr-only">(required)</span>
+                </template>
+              </span>
+              <ProjectFieldInput
+                :field="field"
+                :value="form.fields[field.id]"
+                variant="outline"
+                live
+                :invalid="attempted && !!fieldError && missingRequired(field)"
+                @commit="(v) => setField(field, v)"
+              />
+            </template>
+          </div>
+        </fieldset>
       </form>
     </template>
 

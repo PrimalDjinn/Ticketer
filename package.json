@@ -20,9 +20,11 @@
     "db:migrate": "nuxt db migrate",
     "db:studio": "drizzle-kit studio",
     "deploy": "pnpm build:cloudflare && wrangler deploy --config .output/server/wrangler.json",
-    "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json"
+    "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json",
+    "admin": "node scripts/admin.mjs"
   },
   "dependencies": {
+    "@dragdroptouch/drag-drop-touch": "^2.0.3",
     "@iconify-json/lucide": "^1.2.147",
     "@nuxt/ui": "^4.13.1",
     "@nuxthub/core": "^0.10.12",

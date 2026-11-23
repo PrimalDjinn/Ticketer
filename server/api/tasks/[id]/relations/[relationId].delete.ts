@@ -13,7 +13,10 @@ export default defineEventHandler(async (event) => {
     .returning()
   if (!row) throw createError({ status: 404, message: 'Link not found' })
   const other = row.taskId === id ? row.relatedTaskId : row.taskId
-  await recordActivity(id, user.id, [{ field: 'relation', from: 'link removed' }])
+  const otherTask = await db.query.tasks.findFirst({ where: eq(schema.tasks.id, other) })
+  const otherProject = otherTask ? await db.query.projects.findFirst({ where: eq(schema.projects.id, otherTask.projectId) }) : undefined
+  const kind = row.type === 'relates' ? 'related to' : row.taskId === id ? 'blocks' : 'blocked by'
+  await recordActivity(id, user.id, [{ field: 'relation', from: otherTask && otherProject ? `${kind} ${otherProject.key}-${otherTask.number}` : 'link removed' }])
   for (const changed of [id, other]) publishTask(event, { type: 'task.updated', body: await taskDTO(changed) })
   return relationsOf(id)
 })

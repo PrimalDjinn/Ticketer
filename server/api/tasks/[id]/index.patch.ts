@@ -64,7 +64,8 @@ export default defineEventHandler(async (event) => {
     if (repeat !== task.repeat || interval !== task.repeatInterval) {
       patch.repeat = repeat
       patch.repeatInterval = interval
-      activity.push({ field: 'repeat', from: task.repeat, to: repeat === 'periodically' ? `every ${interval} days` : repeat })
+      const describe = (rule: typeof repeat, days: number | null) => (rule === 'periodically' ? `every ${days} days` : rule)
+      activity.push({ field: 'repeat', from: describe(task.repeat, task.repeatInterval), to: describe(repeat, interval) })
     }
   }
 

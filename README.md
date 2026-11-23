@@ -24,7 +24,14 @@ cp .env.example .env   # optional in dev: nuxt-auth-utils generates a session se
 pnpm dev               # http://localhost:3000, data in .data/
 ```
 
-The first account you register becomes an admin. Admins can promote others from **Users**.
+The first account you register becomes an admin; admins change roles on **Members**. To set up the admin up front,
+either set `NUXT_ADMIN_EMAIL` and `NUXT_ADMIN_PASSWORD` (created on first start if that email has no account; works
+on Docker and Cloudflare) or use the CLI on a Node/Docker deployment:
+
+```bash
+pnpm admin --email you@example.com                     # prompts for a password; promotes the account if it exists
+docker compose -f docker-compose.prod.yml exec ticketer node scripts/admin.mjs --email you@example.com
+```
 
 Schema changes: edit `server/db/schema.ts`, then `pnpm db:generate` to write a migration in
 `server/db/migrations/sqlite`. Migrations apply automatically in dev, on boot in Docker, and in CI before a Cloudflare

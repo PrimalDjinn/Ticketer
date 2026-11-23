@@ -26,6 +26,7 @@ ENV NODE_ENV=production \
 # The server bundle is self-contained (Nitro traces its own node_modules).
 COPY --from=builder --chown=node:node /app/.output ./.output
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=node:node scripts/admin.mjs ./scripts/admin.mjs
 RUN mkdir -p /app/.data/db /app/.data/blob && chown -R node:node /app/.data
 USER node
 VOLUME ["/app/.data"]

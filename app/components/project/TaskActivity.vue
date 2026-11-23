@@ -13,6 +13,13 @@ function priority(value: string | null) {
   return value && value in priorityMeta ? priorityMeta[value as TaskPriority].label : (value ?? '')
 }
 
+/** Repeat rules are logged as the stored value ("weekly") or "every 3 days". */
+const isRepeat = (value: string): value is TaskRepeat => (TASK_REPEATS as readonly string[]).includes(value)
+function repeatText(value: string) {
+  if (value === 'periodically') return 'a custom interval' // entries logged before intervals were recorded
+  return isRepeat(value) ? repeatMeta[value].label.toLowerCase() : value
+}
+
 function sentence(a: TaskActivityDTO): { icon: string; parts: Part[] } {
   const from = a.fromValue
   const to = a.toValue
@@ -64,6 +71,32 @@ function sentence(a: TaskActivityDTO): { icon: string; parts: Part[] } {
       return to
         ? { icon: 'i-lucide-paperclip', parts: [{ text: 'attached ' }, { text: to, strong: true }] }
         : { icon: 'i-lucide-file-x', parts: [{ text: 'removed ' }, { text: from ?? 'a file', strong: !!from }] }
+    case 'repeated':
+      return { icon: 'i-lucide-repeat', parts: [{ text: 'created this occurrence from a repeating task' }] }
+    case 'repeat':
+      if (!to) return { icon: 'i-lucide-repeat', parts: [{ text: 'stopped the task repeating' }] }
+      return {
+        icon: 'i-lucide-repeat',
+        parts: from
+          ? [{ text: 'changed the repeat from ' }, { text: repeatText(from), strong: true }, { text: ' to ' }, { text: repeatText(to), strong: true }]
+          : [{ text: 'set the task to repeat ' }, { text: repeatText(to), strong: true }],
+      }
+    case 'field':
+      return { icon: 'i-lucide-text-cursor-input', parts: [{ text: 'updated ' }, { text: to ?? 'a custom field', strong: !!to }] }
+    case 'relation': {
+      if (!to) {
+        const removed = from ? /^(blocked by|blocks|related to) (.+)$/.exec(from) : null
+        return removed
+          ? { icon: 'i-lucide-unlink', parts: [{ text: `removed the link (${removed[1]}) to ` }, { text: removed[2]!, strong: true }] }
+          : { icon: 'i-lucide-unlink', parts: [{ text: 'removed a link to another task' }] }
+      }
+      const match = /^(blocked by|blocks|relates) (.+)$/.exec(to)
+      if (!match) return { icon: 'i-lucide-link-2', parts: [{ text: 'linked ' }, { text: to, strong: true }] }
+      const [, kind, ref] = match
+      if (kind === 'blocked by') return { icon: 'i-lucide-octagon-x', parts: [{ text: 'marked the task as blocked by ' }, { text: ref!, strong: true }] }
+      if (kind === 'blocks') return { icon: 'i-lucide-octagon-alert', parts: [{ text: 'marked the task as blocking ' }, { text: ref!, strong: true }] }
+      return { icon: 'i-lucide-link-2', parts: [{ text: 'linked the task to ' }, { text: ref!, strong: true }] }
+    }
     default:
       return { icon: 'i-lucide-history', parts: [{ text: `updated ${a.field}` }] }
   }
