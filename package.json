@@ -1,45 +1,53 @@
 {
   "name": "ticketer",
-  "version": "1.0.0",
-  "module": "commonjs",
+  "version": "2.0.0",
   "private": true,
-  "scripts": {
-    "build": "pnpm prisma generate && nuxt build",
-    "dev": "nuxt dev --host",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "start": "pnpm run migrate && nuxt start",
-    "studio": "pnpm prisma studio",
-    "migrate": "pnpm prisma migrate dev --name init && pnpm prisma generate"
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22"
   },
-  "devDependencies": {
-    "@types/multer": "^1.4.11",
-    "@types/node": "^18.19.33",
-    "@types/nodemailer": "^6.4.15",
-    "@types/uuid": "^9.0.8",
-    "@types/ws": "^8.5.10",
-    "concurrently": "^8.2.2",
-    "nuxt": "^3.11.2",
-    "sass": "^1.77.0",
-    "type-fest": "^4.22.0"
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "build:node": "NITRO_PRESET=node-server nuxt build",
+    "build:cloudflare": "NITRO_PRESET=cloudflare-durable nuxt build",
+    "preview": "nuxt preview",
+    "start": "node .output/server/index.mjs",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "db:generate": "nuxt db generate",
+    "db:migrate": "nuxt db migrate",
+    "db:studio": "drizzle-kit studio",
+    "deploy": "pnpm build:cloudflare && wrangler deploy --config .output/server/wrangler.json",
+    "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json"
   },
   "dependencies": {
-    "@prisma/client": "^4.16.2",
-    "crossws": "^0.2.4",
-    "h3-formidable": "^0.3.8",
-    "nodemailer": "^6.9.13",
-    "pathe": "^1.1.2",
-    "perfect-debounce": "^1.0.0",
-    "prisma": "^4.16.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^4.9.5",
-    "ufo": "^1.5.4",
-    "ulid": "^2.3.0",
-    "unstorage": "^1.10.2",
-    "uuid": "^9.0.1",
-    "vue": "^3.4.27",
-    "vue-router": "^4.3.2",
-    "ws": "^8.17.0"
+    "@iconify-json/lucide": "^1.2.147",
+    "@nuxt/ui": "^4.13.1",
+    "@nuxthub/core": "^0.10.12",
+    "@vueuse/core": "^14.4.0",
+    "consola": "^3.4.2",
+    "drizzle-orm": "^0.45.4",
+    "nuxt": "^4.6.4",
+    "nuxt-auth-utils": "^0.6.2",
+    "tailwindcss": "^4.3.5",
+    "ulid": "^3.0.2",
+    "vue": "^3.5.44",
+    "vue-router": "^4.6.4",
+    "zod": "^4.6.7"
+  },
+  "optionalDependencies": {
+    "nodemailer": "^7.0.10"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261018.1",
+    "@libsql/client": "^0.18.0",
+    "@types/node": "^24.10.1",
+    "@types/nodemailer": "^7.0.4",
+    "drizzle-kit": "^0.31.11",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.3.11",
+    "wrangler": "^4.166.0"
   }
 }
