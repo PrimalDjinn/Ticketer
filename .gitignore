@@ -4,10 +4,12 @@ node_modules
 .nitro
 .cache
 .output
+.data
 .env
+.env.*
+!.env.example
+.wrangler
 dist
 .DS_Store
 .idea
 .vscode
-public/uploads
-data
