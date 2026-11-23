@@ -44,7 +44,7 @@ docker compose -f docker-compose.prod.yml --profile tunnel up -d   # + Cloudflar
 ```
 
 Without Docker: `pnpm build:node`, then
-`DATABASE_URL=file:.data/db/sqlite.db NUXT_APP_SECRET=… node .output/server/index.mjs` (or `bun`).
+`LIBSQL_URL=file:.data/db/sqlite.db NUXT_APP_SECRET=… node .output/server/index.mjs` (or `bun`).
 
 Mail for password resets: set `NUXT_MAIL_FROM`, plus `NUXT_MAIL_SMTP_URL` on Node. Without them, reset links are
 written to the server log.

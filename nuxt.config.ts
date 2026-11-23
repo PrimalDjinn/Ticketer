@@ -40,8 +40,10 @@ export default defineNuxtConfig({
       ? { dialect: 'sqlite', driver: 'd1', connection: { databaseId: cloudflare.d1DatabaseId } }
       : {
           dialect: 'sqlite',
-          // libsql reads DATABASE_URL at runtime in production builds, `.data/db/sqlite.db` in dev.
+          // Production builds read LIBSQL_URL at runtime (see server/plugins/00.database-url.ts). Dev pins its own
+          // file so a DATABASE_URL left over from another project (e.g. postgres://) can never be picked up.
           driver: 'libsql',
+          ...(process.env.NODE_ENV !== 'production' && { connection: { url: process.env.LIBSQL_URL || 'file:.data/db/sqlite.db' } }),
           // The database lives on the container volume, not the build machine: migrations run on boot
           // (server/plugins/migrations.ts) instead of at build time.
           applyMigrationsDuringBuild: false,
