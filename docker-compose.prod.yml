@@ -1,7 +1,7 @@
 # Production: pulls the published image. Everything the app writes (SQLite database + uploaded files) lives on the
 # `ticketer_data` volume, so containers can be replaced freely; back that volume up.
 #
-#   export TICKETER_IMAGE=ghcr.io/<owner>/ticketer:latest NUXT_APP_SECRET=...   # see .env.example
+#   export NUXT_APP_SECRET=$(openssl rand -base64 32)                            # see .env.example
 #   docker compose -f docker-compose.prod.yml up -d
 #   docker compose -f docker-compose.prod.yml --profile tunnel up -d             # also expose it via Cloudflare Tunnel
 x-runtime-secrets: &runtime-secrets
@@ -11,7 +11,8 @@ x-runtime-secrets: &runtime-secrets
 
 services:
   ticketer:
-    image: ${TICKETER_IMAGE:?Set TICKETER_IMAGE, e.g. ghcr.io/<owner>/ticketer:latest}
+    # Published by CI from PrimalDjinn/Ticketer; set TICKETER_IMAGE to run a fork's image or a pinned sha tag.
+    image: ${TICKETER_IMAGE:-ghcr.io/primaldjinn/ticketer:latest}
     pull_policy: always
     restart: unless-stopped
     <<: *runtime-secrets

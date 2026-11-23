@@ -5,13 +5,15 @@ export function useProjects() {
   const projects = useState<ProjectDTO[]>('projects', () => [])
   const loaded = useState('projects-loaded', () => false)
   const { user } = useUserSession()
+  // Forwards the visitor's cookies during SSR (a bare $fetch would render the list logged-out, then mismatch).
+  const request = useRequestFetch()
 
   async function refresh() {
     if (!user.value || user.value.isGuest) {
       projects.value = []
       return
     }
-    projects.value = await $fetch<ProjectDTO[]>('/api/projects').catch(() => projects.value)
+    projects.value = await request<ProjectDTO[]>('/api/projects').catch(() => projects.value)
     loaded.value = true
   }
 

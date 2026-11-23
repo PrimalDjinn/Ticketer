@@ -71,6 +71,31 @@ async function deleteTicket() {
   }
 }
 
+// Support -> project hand-off
+const { active: projects, refresh: refreshProjects } = useProjects()
+if (user.value?.isAdmin) await refreshProjects()
+const handingOff = ref(false)
+const handOffItems = computed(() =>
+  projects.value.map((p) => ({ label: p.name, suffix: p.key, onSelect: () => createTask(p.key) })),
+)
+async function createTask(projectKey: string) {
+  handingOff.value = true
+  try {
+    const task = await $fetch<TaskDTO & { projectKey: string }>(`/api/tickets/${id.value}/task`, { method: 'POST', body: { projectKey } })
+    await refresh()
+    toast.add({
+      title: `Created ${task.ref}`,
+      icon: 'i-lucide-circle-check',
+      color: 'success',
+      actions: [{ label: 'Open', to: `/projects/${projectKey}/${task.number}`, variant: 'outline' }],
+    })
+  } catch (e) {
+    toast.add({ title: errorMessage(e, 'Could not create the task'), color: 'error' })
+  } finally {
+    handingOff.value = false
+  }
+}
+
 async function copyReference() {
   await navigator.clipboard.writeText(ticket.value!.reference)
   toast.add({ title: 'Reference copied', icon: 'i-lucide-copy-check' })
@@ -149,6 +174,23 @@ async function copyReference() {
                 <dd class="mt-0.5 text-highlighted">{{ formatDateTime(ticket.resolvedAt) }}</dd>
               </div>
             </dl>
+          </UCard>
+
+          <UCard v-if="ticket.tasks.length || (user?.isAdmin && projects.length)" variant="subtle">
+            <p class="mb-3 text-sm font-medium text-highlighted">Tasks</p>
+            <ul v-if="ticket.tasks.length" class="mb-3 space-y-1.5">
+              <li v-for="t in ticket.tasks" :key="t.id">
+                <NuxtLink :to="`/projects/${t.projectKey}/${t.number}`" class="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-elevated">
+                  <UIcon :name="t.isDone ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" class="size-4 shrink-0" :class="t.isDone ? 'text-success' : 'text-muted'" />
+                  <span class="font-mono text-xs text-muted">{{ t.ref }}</span>
+                  <span class="min-w-0 flex-1 truncate">{{ t.title }}</span>
+                </NuxtLink>
+                <p class="ml-7 text-xs text-dimmed">{{ t.status }}</p>
+              </li>
+            </ul>
+            <UDropdownMenu v-if="user?.isAdmin && projects.length" :items="handOffItems" :content="{ align: 'start' }">
+              <UButton icon="i-lucide-folder-input" label="Create task in…" color="neutral" variant="outline" size="sm" block :loading="handingOff" />
+            </UDropdownMenu>
           </UCard>
 
           <UCard v-if="user?.isAdmin" variant="subtle">

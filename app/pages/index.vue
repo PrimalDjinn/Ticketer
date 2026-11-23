@@ -13,7 +13,14 @@ const { data: recent, refresh: refreshRecent } = await useFetch('/api/tickets', 
   default: () => ({ items: [] as TicketDTO[], total: 0, page: 1, pageSize: 6 }),
 })
 
-const refresh = () => Promise.all([refreshStats(), refreshRecent()])
+const { data: mine, refresh: refreshMine } = await useFetch('/api/tasks/mine', {
+  default: () => ({ tasks: [] as TaskDTO[], projects: [] as ProjectDTO[], labels: [] as LabelDTO[] }),
+})
+const mineProjects = computed(() => new Map(mine.value.projects.map((p) => [p.id, p])))
+onRealtime('task.updated', () => refreshMine())
+onRealtime('task.created', () => refreshMine())
+
+const refresh = () => Promise.all([refreshStats(), refreshRecent(), refreshMine()])
 onRealtime('ticket.created', refresh)
 onRealtime('ticket.updated', refresh)
 onRealtime('ticket.deleted', refresh)
@@ -76,6 +83,27 @@ function runSearch() {
             <p class="mt-1 text-xs text-dimmed">{{ card.hint }}</p>
           </NuxtLink>
         </div>
+
+        <UCard v-if="mine.tasks.length" :ui="{ body: 'p-0 sm:p-0' }">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold text-highlighted">Assigned to you</h2>
+              <UButton to="/my-tasks" variant="link" color="neutral" trailing-icon="i-lucide-arrow-right" label="All my tasks" size="sm" />
+            </div>
+          </template>
+          <ul class="divide-y divide-default">
+            <li v-for="t in mine.tasks.slice(0, 5)" :key="t.id">
+              <NuxtLink :to="`/projects/${mineProjects.get(t.projectId)?.key}/${t.number}`" class="flex items-center gap-3 px-4 py-2.5 transition hover:bg-elevated/50 sm:px-6">
+                <UIcon :name="priorityMeta[t.priority].icon" class="size-4 shrink-0" :class="priorityMeta[t.priority].class" />
+                <span class="w-16 shrink-0 font-mono text-xs text-muted">{{ t.ref }}</span>
+                <span class="min-w-0 flex-1 truncate text-sm text-highlighted">{{ t.title }}</span>
+                <span v-if="t.dueDate" class="text-xs" :class="dueState(t.dueDate) === 'overdue' ? 'text-error' : dueState(t.dueDate) === 'soon' ? 'text-warning' : 'text-muted'">
+                  {{ formatDay(t.dueDate) }}
+                </span>
+              </NuxtLink>
+            </li>
+          </ul>
+        </UCard>
 
         <div class="grid gap-6 lg:grid-cols-5">
           <UCard class="lg:col-span-3" :ui="{ body: 'p-0 sm:p-0' }">

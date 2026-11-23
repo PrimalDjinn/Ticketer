@@ -2,15 +2,67 @@
 import type { NavigationMenuItem, DropdownMenuItem } from '@nuxt/ui'
 
 const { user, clear } = useUserSession()
-useNotificationFeed()
+const { items: notifications } = useNotificationFeed()
 const notificationsOpen = useState('notifications-open', () => false)
 const colorMode = useColorMode()
+const { active: projects, refresh: refreshProjects } = useProjects()
+useProjectsFeed()
+await refreshProjects()
+const newProjectOpen = ref(false)
+const canEdit = computed(() => user.value?.role === 'admin' || user.value?.role === 'member')
 
-const links = computed<NavigationMenuItem[]>(() => [
-  { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/', exact: true },
-  { label: user.value?.isAdmin ? 'All tickets' : 'My tickets', icon: 'i-lucide-ticket', to: '/tickets', exact: true },
+const workLinks = computed<NavigationMenuItem[]>(() => [
+  { label: 'Home', icon: 'i-lucide-house', to: '/', exact: true },
+  {
+    label: 'Inbox',
+    icon: 'i-lucide-inbox',
+    badge: notifications.value.length ? String(notifications.value.length) : undefined,
+    onSelect: () => (notificationsOpen.value = true),
+  },
+  { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' },
+])
+
+const supportLinks = computed<NavigationMenuItem[]>(() => [
+  { label: user.value?.isAdmin ? 'Tickets' : 'My tickets', icon: 'i-lucide-life-buoy', to: '/tickets', exact: true },
   { label: 'New ticket', icon: 'i-lucide-square-pen', to: '/tickets/new' },
-  ...(user.value?.isAdmin ? [{ label: 'Users', icon: 'i-lucide-users', to: '/users' }] : []),
+  ...(user.value?.isAdmin ? [{ label: 'Members', icon: 'i-lucide-users', to: '/users' }] : []),
+])
+
+const projectLinks = computed<NavigationMenuItem[]>(() =>
+  projects.value.map((p) => ({
+    label: p.name,
+    to: `/projects/${p.key}`,
+    badge: p.openCount ? String(p.openCount) : undefined,
+    slot: 'project' as const,
+    project: p,
+  })),
+)
+
+// Command palette (Ctrl/Cmd+K)
+const searchGroups = computed(() => [
+  {
+    id: 'go',
+    label: 'Go to',
+    items: [
+      { label: 'Home', icon: 'i-lucide-house', to: '/' },
+      { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' },
+      { label: 'Tickets', icon: 'i-lucide-life-buoy', to: '/tickets' },
+      { label: 'All projects', icon: 'i-lucide-folder-kanban', to: '/projects' },
+    ],
+  },
+  {
+    id: 'projects',
+    label: 'Projects',
+    items: projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder', to: `/projects/${p.key}` })),
+  },
+  {
+    id: 'actions',
+    label: 'Actions',
+    items: [
+      { label: 'New ticket', icon: 'i-lucide-square-pen', to: '/tickets/new' },
+      ...(canEdit.value ? [{ label: 'New project', icon: 'i-lucide-folder-plus', onSelect: () => (newProjectOpen.value = true) }] : []),
+    ],
+  },
 ])
 
 const accountItems = computed<DropdownMenuItem[][]>(() => [
@@ -46,7 +98,26 @@ async function signOut() {
       </template>
 
       <template #default="{ collapsed }">
-        <UNavigationMenu :collapsed="collapsed" :items="links" orientation="vertical" tooltip />
+        <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+        <UNavigationMenu :collapsed="collapsed" :items="workLinks" orientation="vertical" tooltip />
+
+        <div class="mt-2 flex items-center justify-between px-2.5" :class="collapsed && 'justify-center'">
+          <NuxtLink v-if="!collapsed" to="/projects" class="text-xs font-medium text-dimmed hover:text-muted">Projects</NuxtLink>
+          <UTooltip v-if="canEdit" text="New project">
+            <UButton icon="i-lucide-plus" size="xs" color="neutral" variant="ghost" aria-label="New project" @click="newProjectOpen = true" />
+          </UTooltip>
+        </div>
+        <UNavigationMenu :collapsed="collapsed" :items="projectLinks" orientation="vertical" tooltip>
+          <template #project-leading="{ item }">
+            <span class="grid size-5 shrink-0 place-items-center">
+              <span class="size-2.5 rounded-sm" :class="color((item as { project: ProjectDTO }).project.color).dot" />
+            </span>
+          </template>
+        </UNavigationMenu>
+        <p v-if="!projects.length && !collapsed" class="px-2.5 text-xs text-dimmed">No projects yet</p>
+
+        <p v-if="!collapsed" class="mt-2 px-2.5 text-xs font-medium text-dimmed">Support</p>
+        <UNavigationMenu :collapsed="collapsed" :items="supportLinks" orientation="vertical" tooltip />
       </template>
 
       <template #footer="{ collapsed }">
@@ -66,14 +137,14 @@ async function signOut() {
     </UDashboardSidebar>
 
     <slot />
-
     <USlideover v-model:open="notificationsOpen" title="Notifications" description="Mentions, replies and ticket updates">
       <template #body>
         <NotificationList @navigate="notificationsOpen = false" />
       </template>
     </USlideover>
 
-
+    <UDashboardSearch :groups="searchGroups" placeholder="Search projects, pages and actions…" />
+    <NewProjectModal v-model:open="newProjectOpen" />
     <ChatWidget />
   </UDashboardGroup>
 </template>
