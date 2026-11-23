@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommentNode } from '~/components/ticket/CommentItem.vue'
+import type { CommentNode } from '~/components/CommentItem.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -17,17 +17,7 @@ const { data: people } = await useFetch<PublicUser[]>(() => `/api/tickets/${id.v
 
 useSeoMeta({ title: () => `#${ticket.value ? shortRef(ticket.value.reference) : ''} · Ticketer` })
 
-const thread = computed<CommentNode[]>(() => {
-  const nodes = new Map<number, CommentNode>()
-  for (const c of ticket.value?.comments ?? []) nodes.set(c.id, { ...c, replies: [] })
-  const roots: CommentNode[] = []
-  for (const node of nodes.values()) {
-    const parent = node.parentId ? nodes.get(node.parentId) : undefined
-    if (parent) parent.replies.push(node)
-    else roots.push(node)
-  }
-  return roots
-})
+const thread = computed<CommentNode[]>(() => commentTree(ticket.value?.comments ?? []))
 
 function addComment(comment: CommentDTO) {
   if (!ticket.value || comment.ticketId !== ticket.value.id) return
@@ -35,12 +25,7 @@ function addComment(comment: CommentDTO) {
 }
 function removeComment(commentId: number) {
   if (!ticket.value) return
-  // Replies go with their parent.
-  const gone = new Set([commentId])
-  for (let grew = true; grew; ) {
-    grew = false
-    for (const c of ticket.value.comments) if (c.parentId && gone.has(c.parentId) && !gone.has(c.id)) (gone.add(c.id), (grew = true))
-  }
+  const gone = commentThreadIds(ticket.value.comments, commentId) // replies go with their parent
   ticket.value.comments = ticket.value.comments.filter((c) => !gone.has(c.id))
 }
 
@@ -123,18 +108,18 @@ async function copyReference() {
 
             <p v-if="!thread.length" class="text-sm text-muted">No comments yet. Add context, ask a question, or attach a document.</p>
             <div v-else class="space-y-6">
-              <TicketCommentItem
+              <CommentItem
                 v-for="comment in thread"
                 :key="comment.id"
                 :comment="comment"
-                :ticket-id="ticket.id"
+                :endpoint="`/api/tickets/${ticket.id}/comments`"
                 :people="people"
                 @posted="addComment"
                 @deleted="removeComment"
               />
             </div>
 
-            <TicketCommentComposer :ticket-id="ticket.id" :people="people" @posted="addComment" />
+            <CommentComposer :endpoint="`/api/tickets/${ticket.id}/comments`" :people="people" @posted="addComment" />
           </section>
         </div>
 
