@@ -1,5 +1,5 @@
 // Types shared by the Vue app and the Nitro server (auto-imported from `shared/types`).
-import type { TASK_PRIORITIES, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
+import type { FIELD_TYPES, RELATION_KINDS, TASK_PRIORITIES, TASK_REPEATS, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
 
 export type TicketStatus = (typeof TICKET_STATUSES)[number]
 
@@ -113,6 +113,28 @@ export type RealtimeTransport = 'websocket' | 'sse' | 'poll'
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type TaskPriority = (typeof TASK_PRIORITIES)[number]
+export type TaskRepeat = (typeof TASK_REPEATS)[number]
+export type FieldType = (typeof FIELD_TYPES)[number]
+export type RelationKind = (typeof RELATION_KINDS)[number]
+export type FieldValue = string | number | boolean | string[]
+
+export interface FieldDTO {
+  id: number
+  projectId: number
+  name: string
+  type: FieldType
+  /** Choices for select / multiselect. */
+  options: string[]
+  required: boolean
+  position: number
+}
+
+export interface TaskRelationDTO {
+  id: number
+  /** From the point of view of the task being viewed. */
+  kind: RelationKind
+  task: { id: number; ref: string; title: string; projectKey: string; number: number; status: string; statusColor: string; isDone: boolean }
+}
 
 export interface StatusDTO {
   id: number
@@ -138,6 +160,7 @@ export interface ProjectDTO {
   archivedAt: string | number | Date | null
   createdAt: string | number | Date
   statuses: StatusDTO[]
+  fields: FieldDTO[]
   /** Open (not done) / total task counts, for the sidebar and project list. */
   openCount: number
   taskCount: number
@@ -159,6 +182,13 @@ export interface TaskDTO {
   startDate: string | null
   dueDate: string | null
   position: number
+  repeat: TaskRepeat | null
+  /** Days between occurrences when repeat is `periodically`. */
+  repeatInterval: number | null
+  /** Custom field values keyed by field id. */
+  fieldValues: Record<number, FieldValue>
+  /** Open tasks that block this one (drives the "blocked" marker on cards). */
+  blockedByCount: number
   labelIds: number[]
   subtaskCount: number
   subtaskDoneCount: number
@@ -189,6 +219,7 @@ export interface TaskDetailDTO extends TaskDTO {
   comments: CommentDTO[]
   subtasks: TaskDTO[]
   parent: { id: number; ref: string; title: string } | null
+  relations: TaskRelationDTO[]
   activity: TaskActivityDTO[]
 }
 

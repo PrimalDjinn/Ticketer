@@ -212,6 +212,12 @@ export const tasks = sqliteTable(
     dueDate: text('due_date'),
     /** Order inside a board column; fractional so a drop only rewrites the moved card. */
     position: real('position').notNull().default(0),
+    /** Recurrence: when the task reaches a done column, the next occurrence is created in the first open column. */
+    repeat: text('repeat', { enum: ['daily', 'weekly', 'monthly', 'yearly', 'periodically'] }),
+    /** Days between occurrences when `repeat` is `periodically`. */
+    repeatInterval: integer('repeat_interval'),
+    /** The task this one was repeated from, so an occurrence is only spawned once. */
+    repeatedFromId: integer('repeated_from_id'),
     createdAt: createdAt(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
     completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
@@ -275,6 +281,61 @@ export const taskActivity = sqliteTable(
   },
   (t) => [index('task_activity_task_idx').on(t.taskId)],
 )
+
+/** Directed link between tasks: `blocks` (task blocks related) or `relates`. */
+export const taskRelations = sqliteTable(
+  'task_relations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    relatedTaskId: integer('related_task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    type: text('type', { enum: ['blocks', 'relates'] }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('task_relations_pair_idx').on(t.taskId, t.relatedTaskId),
+    index('task_relations_related_idx').on(t.relatedTaskId),
+  ],
+)
+
+/** Per-project custom fields shown on every task of the project. */
+export const projectFields = sqliteTable(
+  'project_fields',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: text('type', { enum: ['text', 'number', 'date', 'select', 'multiselect', 'checkbox'] }).notNull(),
+    /** Choices for select / multiselect. */
+    options: text('options', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    required: integer('required', { mode: 'boolean' }).notNull().default(false),
+    position: integer('position').notNull().default(0),
+  },
+  (t) => [index('project_fields_project_idx').on(t.projectId)],
+)
+
+export const taskFieldValues = sqliteTable(
+  'task_field_values',
+  {
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    fieldId: integer('field_id')
+      .notNull()
+      .references(() => projectFields.id, { onDelete: 'cascade' }),
+    /** JSON-encoded: string | number | boolean | string[] */
+    value: text('value', { mode: 'json' }).$type<FieldValue>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.fieldId] }), index('task_field_values_field_idx').on(t.fieldId)],
+)
+
+export type FieldValue = string | number | boolean | string[]
 
 export type User = typeof users.$inferSelect
 export type Ticket = typeof tickets.$inferSelect

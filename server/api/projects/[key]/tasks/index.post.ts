@@ -11,6 +11,10 @@ const newTaskSchema = z.object({
   labelIds: z.array(z.number().int().positive()).max(20).default([]),
   parentId: z.number().int().positive().nullable().optional(),
   ticketId: z.number().int().positive().nullable().optional(),
+  repeat: z.enum(TASK_REPEATS).nullable().optional(),
+  repeatInterval: z.number().int().min(1).max(3650).nullable().optional(),
+  fields: z.record(z.string().regex(/^\d+$/), z.unknown()).optional(),
+  requireFields: z.boolean().optional(),
 })
 
 export default defineEventHandler(async (event) => {
