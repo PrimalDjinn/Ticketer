@@ -1,0 +1,45 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    command: /bin/bash -c "while true; do sleep 1; done"
+    volumes:
+      - ..:/workspaces/hello-finueva
+      - ../services:/workspaces/services
+      # Mount SSH and Git config for Git authentication
+      - ${HOME}/.ssh:/home/coder/.ssh
+      - ${HOME}/.gitconfig:/home/coder/.gitconfig
+      - /dev/bus/usb:/dev/bus/usb
+    networks:
+      - finueva-dev
+    healthcheck:
+      test: ["CMD", "ps", "aux"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ADB_SERVER_SOCKET: tcp:host.docker.internal:5037
+
+  backend:
+    build:
+      context: ../services/firebase-backend
+      dockerfile: .devcontainer/Dockerfile
+    init: true
+    command: /bin/bash -c "while true; do sleep 1; done"
+    volumes:
+      - ../services/firebase-backend:/workspaces/services/firebase-backend
+      - ${HOME}/.ssh:/home/coder/.ssh:ro
+      - ${HOME}/.gitconfig:/home/coder/.gitconfig
+    working_dir: /workspaces/services/firebase-backend
+    networks:
+      - finueva-dev
+    profiles:
+      - services
+
+networks:
+  finueva-dev:
+    driver: bridge

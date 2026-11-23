@@ -1,0 +1,181 @@
+{
+  "name": "Hello-Finueva App Dev Container",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/hello-finueva",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "coder",
+  "features": {
+    "ghcr.io/devcontainers-extra/features/pnpm": {
+      "version": "latest",
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1.10.1": {},
+    "ghcr.io/devcontainers/features/github-cli:1.1.3": {},
+    "ghcr.io/bascodes/devcontainer-features/desktop-novnc": {},
+    "ghcr.io/coder/devcontainer-features/code-server:2": {
+      "auth": "none",
+    },
+  },
+  "mounts": [
+    // SSH and Git config for Git authentication
+    {
+      "source": "${localEnv:HOME}/.ssh",
+      "type": "bind",
+      "target": "/home/coder/.ssh",
+    },
+    {
+      "source": "${localEnv:HOME}/.gitconfig",
+      "type": "bind",
+      "target": "/home/coder/.gitconfig",
+    },
+    {
+      "source": "/dev/bus/usb",
+      "type": "bind",
+      "target": "/dev/bus/usb",
+    },
+    // Claude Code
+    {
+      "source": "${localEnv:HOME}/.claude",
+      "type": "bind",
+      "target": "/home/coder/.claude",
+    },
+    {
+      "source": "${localEnv:HOME}/.claude.json",
+      "type": "bind",
+      "target": "/home/coder/.claude.json",
+    },
+    // Codex
+    {
+      "source": "${localEnv:HOME}/.codex",
+      "type": "bind",
+      "target": "/home/coder/.codex",
+    },
+    // OpenCode v2
+    {
+      "source": "${localEnv:HOME}/.config/opencode",
+      "type": "bind",
+      "target": "/home/coder/.config/opencode",
+    },
+    {
+      "source": "${localEnv:HOME}/.local/share/opencode",
+      "type": "bind",
+      "target": "/home/coder/.local/share/opencode",
+    },
+  ],
+  "privileged": true,
+  "postCreateCommand": "sudo /usr/local/bin/setup-postgres.sh; sudo /usr/local/bin/setup-dev.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "antfu.goto-alias",
+        "chwoerz.type-buddy",
+        "atommaterial.a-file-icon-vscode",
+        "usernamehw.errorlens",
+        "mikestead.dotenv",
+        "github.vscode-github-actions",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "wayou.vscode-todo-highlight",
+        "vue.volar",
+        "shd101wyy.markdown-preview-enhanced",
+        "christian-kohler.path-intellisense",
+        "doggy8088.quicktype-refresh",
+        "jock.svg",
+        "redhat.vscode-yaml",
+        "irongeek.vscode-env",
+        "yoavbls.pretty-ts-errors",
+        "alimozdemir.vscode-nuxt-dx-tools",
+        "eamodio.gitlens",
+        "lokalise.i18n-ally",
+        "pushqrdx.inline-html",
+        "unifiedjs.vscode-mdx",
+        "docker.docker",
+        "afzalsayed96.icones",
+        "antfu.iconify",
+        "Tobermory.es6-string-html",
+        "cweijan.dbclient-jdbc",
+        "cweijan.vscode-database-client2",
+        "WakaTime.vscode-wakatime",
+        "Lakshmisankar.vscode-lucide-icons",
+        "DigitalBrainstem.javascript-ejs-support",
+        "-vscjava.vscode-java-pack",
+        "-redhat.java",
+        "-vscjava.vscode-java-debug",
+        "-vscjava.vscode-java-test",
+        "-vscjava.vscode-maven",
+        "-vscjava.vscode-gradle",
+        "-vscjava.vscode-java-dependency",
+      ],
+      "settings": {
+        "files.eol": "\n",
+        "telemetry.telemetryLevel": "off",
+        "rust-analyzer.linkedProjects": [
+          "apps/heylomeet/src-tauri/Cargo.toml",
+          "experiments/chat-e2ee/Cargo.toml",
+          "experiments/chat-e2ee/native-custody/Cargo.toml",
+          "packages/android-credential-store/Cargo.toml",
+        ],
+      },
+    },
+    // https://github.com/coder/coder/blob/8b970e7ff37d3937ae963414276b9a442356c6f4/.devcontainer/devcontainer.json#L22
+    "coder": {
+      "apps": [
+        {
+          "slug": "cursor",
+          "displayName": "Cursor Desktop",
+          "url": "cursor://coder.coder-remote/openDevContainer?owner=${localEnv:CODER_WORKSPACE_OWNER_NAME}&workspace=${localEnv:CODER_WORKSPACE_NAME}&agent=${localEnv:CODER_WORKSPACE_PARENT_AGENT_NAME}&url=${localEnv:CODER_URL}&token=$SESSION_TOKEN&devContainerName=${localEnv:CONTAINER_ID}&devContainerFolder=${containerWorkspaceFolder}&localWorkspaceFolder=${localWorkspaceFolder}",
+          "external": true,
+          "icon": "/icon/cursor.svg",
+          "order": 1,
+        },
+        {
+          "slug": "windsurf",
+          "displayName": "Windsurf Editor",
+          "url": "windsurf://coder.coder-remote/openDevContainer?owner=${localEnv:CODER_WORKSPACE_OWNER_NAME}&workspace=${localEnv:CODER_WORKSPACE_NAME}&agent=${localEnv:CODER_WORKSPACE_PARENT_AGENT_NAME}&url=${localEnv:CODER_URL}&token=$SESSION_TOKEN&devContainerName=${localEnv:CONTAINER_ID}&devContainerFolder=${containerWorkspaceFolder}&localWorkspaceFolder=${localWorkspaceFolder}",
+          "external": true,
+          "icon": "/icon/windsurf.svg",
+          "order": 4,
+        },
+        {
+          "slug": "zed",
+          "displayName": "Zed Editor",
+          "url": "zed://ssh/${localEnv:CODER_WORKSPACE_AGENT_NAME}.${localEnv:CODER_WORKSPACE_NAME}.${localEnv:CODER_WORKSPACE_OWNER_NAME}.coder${containerWorkspaceFolder}",
+          "external": true,
+          "icon": "/icon/zed.svg",
+          "order": 5,
+        },
+        // Reproduce `code-server` app here from the code-server
+        // feature so that we can set the correct folder and order.
+        // Currently, the order cannot be specified via option because
+        // we parse it as a number whereas variable interpolation
+        // results in a string. Additionally we set health check which
+        // is not yet set in the feature.
+        {
+          "slug": "code-server",
+          "displayName": "code-server",
+          "url": "http://${localEnv:FEATURE_CODE_SERVER_OPTION_HOST:127.0.0.1}:${localEnv:FEATURE_CODE_SERVER_OPTION_PORT:8080}/?folder=${containerWorkspaceFolder}",
+          "openIn": "${localEnv:FEATURE_CODE_SERVER_OPTION_APPOPENIN:slim-window}",
+          "share": "${localEnv:FEATURE_CODE_SERVER_OPTION_APPSHARE:owner}",
+          "icon": "/icon/code.svg",
+          "group": "${localEnv:FEATURE_CODE_SERVER_OPTION_APPGROUP:Web Editors}",
+          "order": 3,
+          "healthCheck": {
+            "url": "http://${localEnv:FEATURE_CODE_SERVER_OPTION_HOST:127.0.0.1}:${localEnv:FEATURE_CODE_SERVER_OPTION_PORT:8080}/healthz",
+            "interval": 5,
+            "threshold": 2,
+          },
+        },
+      ],
+    },
+  },
+  "postStartCommand": "sudo service postgresql start; sudo /usr/local/bin/setup-java.sh; bash /usr/local/bin/setup-git.sh; bash /usr/local/bin/install-node.sh",
+  "containerEnv": {
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "en_US.UTF-8",
+    "DB_HOST": "localhost",
+    "DB_PORT": "5432",
+    "DB_PASSWORD": "postgres",
+    "DB_NAME": "postgres",
+    "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/postgres",
+  },
+}
