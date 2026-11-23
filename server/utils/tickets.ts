@@ -70,10 +70,17 @@ export async function ticketDetail(ticket: TicketRow): Promise<TicketDetailDTO> 
     attachmentsFor('ticketId', [ticket.id]),
     db.select().from(schema.comments).where(eq(schema.comments.ticketId, ticket.id)).orderBy(asc(schema.comments.createdAt)),
   ])
+  const linked = await db
+    .select({ id: schema.tasks.id, number: schema.tasks.number, title: schema.tasks.title, key: schema.projects.key, status: schema.projectStatuses.name, isDone: schema.projectStatuses.isDone })
+    .from(schema.tasks)
+    .innerJoin(schema.projects, eq(schema.tasks.projectId, schema.projects.id))
+    .innerJoin(schema.projectStatuses, eq(schema.tasks.statusId, schema.projectStatuses.id))
+    .where(eq(schema.tasks.ticketId, ticket.id))
   return {
     ...toTicketDTO(ticket, ticket.creatorId ? names.get(ticket.creatorId) : null),
     attachments: files.get(ticket.id) ?? [],
     comments: await toCommentDTOs(commentRows),
+    tasks: linked.map((t) => ({ id: t.id, ref: `${t.key}-${t.number}`, title: t.title, projectKey: t.key, number: t.number, status: t.status, isDone: t.isDone })),
   }
 }
 

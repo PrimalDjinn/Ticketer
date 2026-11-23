@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<ChatDTO[]> => {
     .orderBy(desc(c.lastMessageAt))
 
   const partnerIds = rows.map((r) => otherParty(r, user.id))
-  const admins = await db.select().from(schema.users).where(and(eq(schema.users.isAdmin, true), ne(schema.users.id, user.id)))
+  const admins = await db.select().from(schema.users).where(and(eq(schema.users.role, 'admin'), ne(schema.users.id, user.id)))
   const partners = new Map(
     (partnerIds.length ? await db.select().from(schema.users).where(inArray(schema.users.id, partnerIds)) : []).map((u) => [u.id, u]),
   )

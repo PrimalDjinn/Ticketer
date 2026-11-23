@@ -27,6 +27,8 @@ export default defineEventHandler(async (event) => {
     const comment = await db.query.comments.findFirst({ where: eq(schema.comments.id, file.commentId), columns: { ticketId: true } })
     if (!comment) throw createError({ status: 404, message: 'File not found' })
     await loadTicketFor(user, comment.ticketId)
+  } else if (file.taskId || file.taskCommentId) {
+    if (user.isGuest) throw createError({ status: 404, message: 'File not found' })
   } else if (file.messageId) {
     const message = await db.query.messages.findFirst({ where: eq(schema.messages.id, file.messageId) })
     if (!message || (message.fromId !== user.id && message.toId !== user.id)) throw createError({ status: 404, message: 'File not found' })

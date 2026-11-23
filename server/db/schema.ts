@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core'
 
 const createdAt = () =>
   integer('created_at', { mode: 'timestamp_ms' })
@@ -20,7 +20,10 @@ export const users = sqliteTable('users', {
   email: text('email').unique(),
   name: text('name').unique(),
   passwordHash: text('password_hash'),
-  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
+  /** admin: manages people, projects and support; member: works on tasks; viewer: read-only. */
+  role: text('role', { enum: ['admin', 'member', 'viewer'] })
+    .notNull()
+    .default('member'),
   isGuest: integer('is_guest', { mode: 'boolean' }).notNull().default(true),
   companyId: integer('company_id').references(() => companies.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
@@ -121,6 +124,8 @@ export const attachments = sqliteTable(
     ticketId: integer('ticket_id').references(() => tickets.id, { onDelete: 'cascade' }),
     commentId: integer('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
     messageId: integer('message_id').references(() => messages.id, { onDelete: 'cascade' }),
+    taskId: integer('task_id').references((): AnySQLiteColumn => tasks.id, { onDelete: 'cascade' }),
+    taskCommentId: integer('task_comment_id').references((): AnySQLiteColumn => taskComments.id, { onDelete: 'cascade' }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -128,6 +133,8 @@ export const attachments = sqliteTable(
     index('attachments_ticket_idx').on(t.ticketId),
     index('attachments_comment_idx').on(t.commentId),
     index('attachments_message_idx').on(t.messageId),
+    index('attachments_task_idx').on(t.taskId),
+    index('attachments_task_comment_idx').on(t.taskCommentId),
   ],
 )
 
@@ -147,9 +154,135 @@ export const notifications = sqliteTable(
   (t) => [index('notifications_user_unread_idx').on(t.userId, t.readAt)],
 )
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Projects (Kaneo-style task tracking)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const projects = sqliteTable('projects', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** Short uppercase prefix for task numbers, e.g. SUP -> SUP-12. */
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  color: text('color').notNull().default('indigo'),
+  nextNumber: integer('next_number').notNull().default(1),
+  createdById: text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
+})
+
+/** The project's workflow: one board column per status, ordered by `position`. */
+export const projectStatuses = sqliteTable(
+  'project_statuses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    color: text('color').notNull().default('neutral'),
+    position: integer('position').notNull().default(0),
+    /** Tasks in a done column count as completed. */
+    isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false),
+  },
+  (t) => [index('project_statuses_project_idx').on(t.projectId)],
+)
+
+export const tasks = sqliteTable(
+  'tasks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    number: integer('number').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    statusId: integer('status_id')
+      .notNull()
+      .references(() => projectStatuses.id),
+    priority: text('priority', { enum: ['none', 'low', 'medium', 'high', 'urgent'] })
+      .notNull()
+      .default('none'),
+    assigneeId: text('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    creatorId: text('creator_id').references(() => users.id, { onDelete: 'set null' }),
+    parentId: integer('parent_id').references((): AnySQLiteColumn => tasks.id, { onDelete: 'cascade' }),
+    ticketId: integer('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+    startDate: text('start_date'),
+    dueDate: text('due_date'),
+    /** Order inside a board column; fractional so a drop only rewrites the moved card. */
+    position: real('position').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
+    completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    uniqueIndex('tasks_project_number_idx').on(t.projectId, t.number),
+    index('tasks_status_idx').on(t.statusId),
+    index('tasks_assignee_idx').on(t.assigneeId),
+    index('tasks_parent_idx').on(t.parentId),
+    index('tasks_ticket_idx').on(t.ticketId),
+  ],
+)
+
+export const labels = sqliteTable('labels', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  color: text('color').notNull().default('neutral'),
+})
+
+export const taskLabels = sqliteTable(
+  'task_labels',
+  {
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    labelId: integer('label_id')
+      .notNull()
+      .references(() => labels.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.labelId] }), index('task_labels_label_idx').on(t.labelId)],
+)
+
+export const taskComments = sqliteTable(
+  'task_comments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    parentId: integer('parent_id').references((): AnySQLiteColumn => taskComments.id, { onDelete: 'cascade' }),
+    authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+    body: text('body').notNull().default(''),
+    createdAt: createdAt(),
+  },
+  (t) => [index('task_comments_task_idx').on(t.taskId)],
+)
+
+/** Field-level history shown in the task timeline. */
+export const taskActivity = sqliteTable(
+  'task_activity',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    actorId: text('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    field: text('field').notNull(),
+    fromValue: text('from_value'),
+    toValue: text('to_value'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('task_activity_task_idx').on(t.taskId)],
+)
+
 export type User = typeof users.$inferSelect
 export type Ticket = typeof tickets.$inferSelect
 export type Comment = typeof comments.$inferSelect
 export type Message = typeof messages.$inferSelect
 export type Attachment = typeof attachments.$inferSelect
 export type Notification = typeof notifications.$inferSelect
+export type Project = typeof projects.$inferSelect
+export type ProjectStatus = typeof projectStatuses.$inferSelect
+export type Task = typeof tasks.$inferSelect
+export type Label = typeof labels.$inferSelect
