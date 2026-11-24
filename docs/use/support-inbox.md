@@ -44,8 +44,9 @@ Viewers can read conversations but can't reply, assign or close them.
    box turns amber and says the customer will see it.
 3. Write the message and select **Send** (or **Add note**).
 
-The customer is notified of replies. Internal notes are for the team only; the assignee is notified of them. The box
-starts on **Internal note** again when you open another conversation.
+The customer is notified of replies. Internal notes are for the team only; the assignee is notified of them. After
+each message the box goes back to **Internal note**, so select **Reply** again for every message the customer should
+see.
 
 ## Assign a conversation
 
