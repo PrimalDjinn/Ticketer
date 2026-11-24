@@ -75,11 +75,15 @@ People outside the team never receive internal notes, other people's user IDs, o
 | --- | --- | --- | --- | --- | --- |
 | Change own password (**Account** page) | Yes | Yes | Yes | Yes, if the account has a password | No |
 | Delete own account (**Account** page) | Yes, unless the last admin | Yes | Yes | Yes | No |
+| Push notifications and email copies (**Account** page) | Yes | Yes | Yes | Yes | No |
 | Delete other people's accounts (**Members**) | Yes | No | No | No | No |
 
 See [Delete accounts and personal data](/admin/delete-accounts).
 
 ## Notifications
+
+Notifications appear in the app, and as push notifications and email copies for people who turned those on. Email
+copies are on by default for external accounts and off for the team. See [Get notifications](/use/notifications).
 
 | Event | Who is notified |
 | --- | --- |

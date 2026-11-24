@@ -50,6 +50,8 @@ Either restore the previous value, or:
 2. In **Settings** > **Email**, enter the SMTP password again.
 3. In **Settings** > **Integrations**, rotate every app's credentials and update the apps. Their signed links fail
    with `launch_signature` until you do.
+4. Reset the Web Push key. See
+   [Push notifications stopped working for everyone](#push-notifications-stopped-working-for-everyone).
 
 ## Email isn't sent
 
@@ -78,6 +80,33 @@ Ticketer builds the links it sends (invitations, password resets, integration lo
 callback URL from the request's `Host` header and the `X-Forwarded-Proto` header. Behind a reverse proxy, make the
 proxy pass the original `Host` header and set `X-Forwarded-Proto`. If the proxy changes the host, set
 `NUXT_OIDC_REDIRECT_URL` to the public callback URL for single sign-on.
+
+## Push notifications stopped working for everyone
+
+Ticketer creates its Web Push key pair the first time someone turns push on, and stores the private key encrypted with
+a key derived from `NUXT_APP_SECRET`. If that secret changes, every push fails and turning push on fails too. The log
+shows:
+
+```text
+[push] push failed { host: '…', error: 'The Web Push key could not be decrypted (was NUXT_APP_SECRET changed?)' }
+```
+
+Restore the previous `NUXT_APP_SECRET`, or create a new key pair:
+
+1. Delete the stored key from the database:
+
+   ```sql
+   DELETE FROM settings WHERE key = 'vapid';
+   ```
+
+   On Docker and Node, run it with `sqlite3` against the database file. On Cloudflare, run
+   `pnpm exec wrangler d1 execute <database-name> --remote --command "DELETE FROM settings WHERE key = 'vapid'"`,
+   where `<database-name>` is your D1 database's name (default `ticketer`). Ticketer creates a new key pair on next use.
+2. Ask everyone to turn **Push notifications on this device** off and on again on their **Account** page, in each
+   browser. Their old subscriptions belong to the old key.
+
+For one person whose push notifications don't arrive, see
+[Get notifications](/use/notifications#push-notifications-don-t-arrive).
 
 ## Single sign-on errors
 

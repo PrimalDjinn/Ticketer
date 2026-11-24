@@ -24,7 +24,7 @@ replace containers freely.
 
    ::: warning
    Changing `NUXT_APP_SECRET` signs everyone out and makes secrets saved in Settings unreadable: the SMTP password,
-   the single sign-on client secret and every integration's signing secret.
+   the single sign-on client secret, every integration's signing secret and the Web Push key.
    :::
 
 2. Optional: set the first admin and mail. Without an admin, the first person to register becomes the admin.

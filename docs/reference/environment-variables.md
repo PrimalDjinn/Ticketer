@@ -15,7 +15,8 @@ the environment variable wins and the field is locked there.
 
 ::: warning
 Changing `NUXT_APP_SECRET` signs everyone out and makes saved secrets unreadable: the SMTP password, the single sign-on
-client secret and integration signing secrets. Re-enter them and rotate integration credentials after a change.
+client secret, integration signing secrets and the Web Push key. Re-enter them and rotate integration credentials
+after a change, and see [Push notifications stopped working for everyone](/reference/troubleshooting#push-notifications-stopped-working-for-everyone).
 :::
 
 ## First admin

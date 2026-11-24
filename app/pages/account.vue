@@ -179,7 +179,7 @@ async function remove() {
         <section v-if="notif" class="space-y-4">
           <div>
             <h2 class="font-semibold text-highlighted">Notifications</h2>
-            <p class="mt-1 text-sm text-muted">You always see notifications in the app. Choose how to hear about them when Ticketer isn't open.</p>
+            <p class="mt-1 text-sm text-muted">You always see notifications in the app. Push reaches this device when Ticketer isn't in front of you; email copies go to your inbox either way.</p>
           </div>
           <div class="divide-y divide-default rounded-lg border border-default">
             <div class="flex items-start justify-between gap-4 px-4 py-3">

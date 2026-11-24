@@ -52,7 +52,7 @@ async function deliverAway(event: H3Event, rows: (typeof schema.notifications.$i
   await Promise.all(
     subscriptions.map(async (sub) => {
       const row = rows.find((r) => r.userId === sub.userId)!
-      const result = await sendPush(sub, { title: appName, body: row.message, link: row.link, tag: row.link ?? `n${row.id}` }, { subject: origin })
+      const result = await sendPush(sub, { title: appName, body: row.message, link: row.link, tag: row.link?.split('#')[0] ?? `n${row.id}` }, { subject: origin })
       if (result === 'gone') gone.push(sub.id)
       else if (result === 'sent') await db.update(schema.pushSubscriptions).set({ lastSentAt: new Date() }).where(eq(schema.pushSubscriptions.id, sub.id))
     }),

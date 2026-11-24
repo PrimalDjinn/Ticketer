@@ -121,5 +121,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     <p v-else-if="!showPassword" class="text-center text-xs text-dimmed">
       <ULink :to="{ query: { ...route.query, password: null } }" class="hover:text-muted">Admin sign-in with a password</ULink>
     </p>
+
+    <div class="space-y-3 border-t border-default pt-5">
+      <p class="text-center text-xs font-medium text-dimmed">Need help without signing in?</p>
+      <div class="grid grid-cols-2 gap-2">
+        <UButton to="/issues" icon="i-lucide-activity" label="Status and issues" color="neutral" variant="outline" block />
+        <UButton icon="i-lucide-messages-square" label="Start a chat" color="neutral" variant="outline" block @click="openSupportChat()" />
+      </div>
+    </div>
   </div>
 </template>

@@ -4,6 +4,7 @@
  * half encrypted with `encryptSecret`, so deployments need no setup.
  */
 import { z } from 'zod'
+import { db, schema } from 'hub:db'
 
 const log = useLogger('push')
 const encoder = new TextEncoder()
@@ -35,7 +36,7 @@ const concat = (...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
 const vapidShape = z.object({ publicKey: z.string().min(80), privateKey: z.string().min(10) })
 let cachedVapid: Promise<{ publicKey: string; signingKey: CryptoKey }> | undefined
 
-async function loadVapid() {
+async function loadVapid(retried = false): Promise<{ publicKey: string; signingKey: CryptoKey }> {
   let stored = await getSetting('vapid', vapidShape)
   if (!stored) {
     const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair
@@ -47,7 +48,15 @@ async function loadVapid() {
     log.info('created the VAPID key pair for Web Push')
   }
   const jwk = await decryptSecret(stored.privateKey)
-  if (!jwk) throw new Error('The Web Push key could not be decrypted (was NUXT_APP_SECRET changed?)')
+  if (!jwk) {
+    if (retried) throw new Error('A new Web Push key could not be stored and read back')
+    // NUXT_APP_SECRET changed: the old key is unusable. Start over with a new pair; every browser's subscription
+    // belonged to the old key, so they are dropped and people turn push on again.
+    log.warn('the Web Push key could not be decrypted (NUXT_APP_SECRET changed?); creating a new one — people need to turn push on again')
+    await deleteSetting('vapid')
+    await db.delete(schema.pushSubscriptions)
+    return loadVapid(true)
+  }
   const signingKey = await crypto.subtle.importKey('jwk', JSON.parse(jwk), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'])
   return { publicKey: stored.publicKey, signingKey }
 }

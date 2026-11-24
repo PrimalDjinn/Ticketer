@@ -27,6 +27,7 @@ function setFilters(patch: Partial<z.input<typeof filtersSchema>>) {
 const searchText = ref(filters.value.q ?? '')
 watchDebounced(searchText, (q) => setFilters({ q: q.trim() || undefined }), { debounce: 350 })
 
+const { data: overview } = await usePublicOverview()
 const pageSize = 20
 const { data, status, refresh } = await useFetch<PublicTicketPage>('/api/public/tickets', {
   query: computed(() => ({ ...filters.value, pageSize })),
@@ -55,9 +56,10 @@ const statusText: Record<TicketStatus, string> = { Open: 'text-info', Pending: '
 <template>
   <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-12">
     <div class="mb-8 space-y-2">
-      <h1 class="text-2xl font-semibold tracking-tight text-highlighted sm:text-3xl">Issues</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-highlighted sm:text-3xl">Status and known issues</h1>
       <p class="max-w-2xl text-muted">Known issues, fixes in progress and announcements from the team. Sign in to follow an issue or add details.</p>
     </div>
+    <PublicStatusBanner :status="overview.status" class="mb-8" />
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
       <UInput v-model="searchText" icon="i-lucide-search" placeholder="Search issues…" class="w-full sm:w-80" size="lg" aria-label="Search issues" />

@@ -50,7 +50,8 @@ data. An admin must turn on **Can delete people** for the app first. See
 **Always deleted:**
 
 - The account: profile, email, password and links to single sign-on or app identities.
-- Pending invitations for their email, login links, password reset links, notifications and ticket follows.
+- Pending invitations for their email, login links, password reset links, notifications, push notification
+  subscriptions and ticket follows.
 - Support conversations they started, with every message in them (the team's replies and internal notes too) and their
   files.
 - Direct message threads they were part of, for both people, with their files.

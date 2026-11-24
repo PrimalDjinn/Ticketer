@@ -45,6 +45,7 @@ export default defineConfig({
           { text: 'Publish an issue', link: '/use/public-issues' },
           { text: 'Answer support chats', link: '/use/support-inbox' },
           { text: 'Plan work in projects', link: '/use/projects' },
+          { text: 'Get notifications', link: '/use/notifications' },
         ],
       },
       {

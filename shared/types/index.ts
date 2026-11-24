@@ -344,3 +344,14 @@ export type TaskRealtime =
   | { type: 'project.updated'; body: ProjectDTO }
   | { type: 'project.deleted'; body: { id: number } }
   | { type: 'labels.updated'; body: LabelDTO[] }
+
+/** GET /api/public/overview: shown on the public home, the issues page and the chat widget. */
+export interface PublicOverview {
+  /** Median first reply in support chats over the last 30 days; `text` is null until there's enough data. */
+  reply: { minutes: number | null; sample: number; text: string | null }
+  status: {
+    open: number
+    urgent: boolean
+    latest: { reference: string; title: string; status: TicketStatus; urgency: TicketUrgency; updatedAt: string | number | Date }[]
+  }
+}

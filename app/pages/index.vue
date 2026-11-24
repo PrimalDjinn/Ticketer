@@ -1,10 +1,19 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
-const { internal } = useAccess()
-useSeoMeta({ title: () => (internal.value ? 'Dashboard · Ticketer' : 'Home · Ticketer') })
+// Visitors who aren't signed in (and guest sessions) get the public help page; everyone else their dashboard.
+definePageMeta({
+  middleware: [
+    () => {
+      const { loggedIn, user } = useUserSession()
+      if (!loggedIn.value || user.value?.isGuest) setPageLayout('public')
+    },
+  ],
+})
+const { internal, registered } = useAccess()
+useSeoMeta({ title: () => (!registered.value ? undefined : internal.value ? 'Dashboard · Ticketer' : 'Home · Ticketer') })
 </script>
 
 <template>
-  <HomeTeam v-if="internal" />
+  <HomePublic v-if="!registered" />
+  <HomeTeam v-else-if="internal" />
   <HomeCustomer v-else />
 </template>

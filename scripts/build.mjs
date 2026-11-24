@@ -15,10 +15,15 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 
 const preset = process.env.NITRO_PRESET || (process.env.WORKERS_CI ? 'cloudflare-durable' : 'node-server')
 console.log(`[ticketer] building with preset ${preset}`)
-const result = spawnSync('nuxt', ['build'], { stdio: 'inherit', shell: process.platform === 'win32', env: { ...process.env, NITRO_PRESET: preset } })
+// Run the project's own Nuxt CLI with this Node, so it works with or without node_modules/.bin on PATH.
+const nuxtBin = join(dirname(createRequire(import.meta.url).resolve('nuxt/package.json')), 'bin', 'nuxt.mjs')
+const result = spawnSync(process.execPath, [nuxtBin, 'build'], { stdio: 'inherit', env: { ...process.env, NITRO_PRESET: preset } })
+if (result.error) console.error('[ticketer] could not start the Nuxt build:', result.error.message)
 if (result.status !== 0) process.exit(result.status ?? 1)
 if (!preset.startsWith('cloudflare')) process.exit(0)
 

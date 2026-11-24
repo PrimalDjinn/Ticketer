@@ -89,6 +89,8 @@ function startNew() {
   chat.close()
   supportView.value = 'new'
 }
+// Typical reply time, measured from recent conversations (null until there's enough data).
+const { data: overview } = usePublicOverview({ server: false })
 </script>
 
 <template>
@@ -147,7 +149,7 @@ function startNew() {
               </span>
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold text-highlighted">Chat with support</p>
-                <p class="truncate text-xs text-muted">{{ supportView === 'list' ? 'Your conversations' : 'We usually reply within a few hours' }}</p>
+                <p class="truncate text-xs text-muted">{{ supportView === 'list' ? 'Your conversations' : (overview.reply.text ?? 'The team replies as soon as they can') }}</p>
               </div>
               <UTooltip v-if="chat.sorted.value.length && supportView !== 'list'" text="Your conversations">
                 <UButton icon="i-lucide-history" color="neutral" variant="ghost" size="sm" square aria-label="Your conversations" @click="showList" />

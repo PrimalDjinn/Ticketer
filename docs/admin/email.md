@@ -1,10 +1,14 @@
 # Set up email
 
-Ticketer sends two kinds of email: invitations and password reset links. This page shows you how to set up sending on
-Node or Docker (SMTP) and on Cloudflare (Cloudflare Email Sending), and how to test it.
+Ticketer sends invitations, password reset links and, for people who want them, copies of their notifications. This
+page shows you how to set up sending on Node or Docker (SMTP) and on Cloudflare (Cloudflare Email Sending), and how to
+test it.
 
 Until email works, Ticketer writes each message, including its link, to the server log instead of sending it. Admins
 also see invitation links on screen when they invite someone.
+
+Notification copies are on by default for people outside the team and off for the team; each person changes it on
+their **Account** page. See [Get notifications](/use/notifications#email-copies).
 
 ## Before you begin
 

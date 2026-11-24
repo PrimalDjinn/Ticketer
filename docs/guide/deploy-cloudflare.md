@@ -28,8 +28,9 @@ The Worker applies database migrations itself on its first request, so a new, em
 
 ::: warning
 Changing `NUXT_APP_SECRET` signs everyone out and makes secrets saved in Settings unreadable: the SMTP password, the
-single sign-on client secret and every integration's signing secret. You then have to enter them again and rotate the
-integration credentials.
+single sign-on client secret, every integration's signing secret and the Web Push key. You then have to enter them
+again, rotate the integration credentials and reset the Web Push key (see
+[Troubleshooting](/reference/troubleshooting#push-notifications-stopped-working-for-everyone)).
 :::
 
 ## Deploy with the button
