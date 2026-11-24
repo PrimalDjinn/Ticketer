@@ -35,15 +35,20 @@ const canSend = computed(() => !props.disabled && (!!body.value.trim() || files.
 /** Clears the box at once so the next message can be typed; puts the text back if sending fails. */
 async function submit() {
   if (!canSend.value) return
-  const sent = { body: body.value, files: files.value }
+  const sent = { body: body.value, files: files.value, internal: !!props.allowInternal && internal.value }
   body.value = ''
   files.value = []
+  // Every message starts as a note again: a reply to the customer is chosen each time.
+  if (props.allowInternal) internal.value = true
   pending.value++
   try {
-    await props.send({ ...sent, internal: props.allowInternal && internal.value })
+    await props.send(sent)
   } catch (e) {
     toast.add({ color: 'error', title: errorMessage(e, 'Message not sent') })
-    if (!body.value) body.value = sent.body
+    if (!body.value) {
+      body.value = sent.body
+      internal.value = sent.internal
+    }
     if (!files.value.length) files.value = sent.files
   } finally {
     pending.value--
