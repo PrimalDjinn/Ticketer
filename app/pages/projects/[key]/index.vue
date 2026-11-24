@@ -17,7 +17,7 @@ const { data: board, error, refresh } = await useFetch<ProjectBoardDTO>(() => `/
   deep: true, // tasks are patched in place by drag and drop and realtime updates
 })
 
-useSeoMeta({ title: () => `${board.value?.project.name ?? 'Project'} · Ticketer` })
+useSeoMeta({ title: () => `${board.value?.project.name ?? 'Project'}` })
 
 // --- URL state: view and open task -----------------------------------------------------------------------------------
 const viewQuery = z.enum(['board', 'list', 'calendar', 'gantt']).catch('board')

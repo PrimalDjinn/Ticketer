@@ -47,6 +47,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Public address (NUXT_SITE_URL), e.g. https://tickets.example.com. Used for links in emails sent by scheduled jobs
+    // such as due-date reminders, which have no request to read it from. Unset = the address the team last used.
+    siteUrl: '',
     // Initial admin, created on first start when no account has this email (NUXT_ADMIN_EMAIL, NUXT_ADMIN_PASSWORD,
     // NUXT_ADMIN_NAME). An existing account is never modified. See also `pnpm admin`.
     admin: {
@@ -60,6 +63,13 @@ export default defineNuxtConfig({
       from: '',
       // Node only: SMTP connection string, e.g. smtps://user:pass@smtp.gmail.com:465
       smtpUrl: '',
+    },
+    // Bot protection for sign-up, password reset and visitor tickets/chats (NUXT_CAPTCHA_*): provider turnstile,
+    // recaptcha (v2 checkbox) or none. Each field set here wins over Settings → Bot protection.
+    captcha: {
+      provider: '',
+      siteKey: '',
+      secretKey: '',
     },
     // Single sign-on with any OpenID Connect provider (Authentik, Keycloak, Entra ID, Google…), NUXT_OIDC_*. Each field
     // set here wins over Settings → Sign-in, where admins can configure the rest. Empty = not pinned. See the README.
@@ -77,7 +87,8 @@ export default defineNuxtConfig({
       redirectUrl: '', // only behind proxies that hide the public origin: https://tickets.example.com/auth/oidc/callback
     },
     public: {
-      appName: 'Ticketer',
+      // NUXT_PUBLIC_APP_NAME: the name shown everywhere. Empty = Settings → Branding ("Ticketer" until set there).
+      appName: '',
     },
   },
 
@@ -89,6 +100,11 @@ export default defineNuxtConfig({
     experimental: {
       websocket: true,
       tasks: true,
+    },
+    // Hourly; the job itself only acts at the hour chosen in Settings → Reminders. On Cloudflare the same cron must be
+    // listed under `triggers.crons` in wrangler.jsonc.
+    scheduledTasks: {
+      '0 * * * *': ['reminders:due'],
     },
     // Migrations ship with the server so the Node build can apply them to the volume on boot.
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations/sqlite' }],

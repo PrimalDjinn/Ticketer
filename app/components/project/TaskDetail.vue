@@ -320,6 +320,32 @@ async function deleteTask() {
   }
 }
 
+// --- following ----------------------------------------------------------------------------------------------------
+const following = computed(() => !!task.value?.followers.some((f) => f.id === user.value?.id))
+const followBusy = ref(false)
+async function toggleFollow() {
+  const current = task.value
+  if (!current) return
+  followBusy.value = true
+  try {
+    const wasFollowing = following.value
+    const result = await $fetch<{ followers: TaskFollowerDTO[] }>(`/api/tasks/${current.id}/follow`, { method: wasFollowing ? 'DELETE' : 'POST' })
+    current.followers = result.followers
+    toast.add(
+      wasFollowing
+        ? { title: `Unfollowed ${current.ref}`, icon: 'i-lucide-bell-off' }
+        : { title: `Following ${current.ref}`, description: 'You’ll be notified about comments, status changes and reassignment.', icon: 'i-lucide-bell-ring' },
+    )
+  } catch (e) {
+    toast.add({ color: 'error', title: errorMessage(e) })
+  } finally {
+    followBusy.value = false
+  }
+}
+onRealtime('task.followers', ({ taskId, followers }) => {
+  if (task.value && taskId === task.value.id) task.value.followers = followers
+})
+
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
     { label: 'Copy link', icon: 'i-lucide-link', onSelect: copyLink },
@@ -379,6 +405,19 @@ function openInPlace(event: MouseEvent, id: number) {
           </NuxtLink>
         </template>
         <div class="ms-auto flex shrink-0 items-center gap-1">
+          <UTooltip :text="following ? 'Unfollow: stop notifications about this task' : 'Follow: get notified about comments, status changes and reassignment'">
+            <UButton
+              :icon="following ? 'i-lucide-bell-ring' : 'i-lucide-bell'"
+              :label="compact ? undefined : following ? 'Following' : 'Follow'"
+              :color="following ? 'primary' : 'neutral'"
+              variant="ghost"
+              size="sm"
+              :loading="followBusy"
+              :aria-label="following ? 'Unfollow task' : 'Follow task'"
+              :aria-pressed="following"
+              @click="toggleFollow"
+            />
+          </UTooltip>
           <UTooltip text="Copy link">
             <UButton icon="i-lucide-link" color="neutral" variant="ghost" size="sm" aria-label="Copy link" @click="copyLink" />
           </UTooltip>
@@ -605,6 +644,18 @@ function openInPlace(event: MouseEvent, id: number) {
         <dd class="flex min-w-0 items-center gap-1.5 text-default">
           <UAvatar :text="initials(task.creatorName ?? '?')" size="3xs" />
           <span class="truncate">{{ task.creatorName ?? 'Unknown' }}</span>
+        </dd>
+        <dt class="text-muted">Followers</dt>
+        <dd class="min-w-0 text-default">
+          <UTooltip v-if="task.followers.length" :text="task.followers.map((f) => f.name).join(', ')">
+            <span class="flex min-w-0 items-center gap-1.5" tabindex="0">
+              <UAvatarGroup size="3xs" :max="4">
+                <UAvatar v-for="f in task.followers" :key="f.id" :text="initials(f.name)" :alt="f.name" />
+              </UAvatarGroup>
+              <span class="truncate">{{ following ? (task.followers.length === 1 ? 'You' : `You and ${task.followers.length - 1} more`) : task.followers.length }}</span>
+            </span>
+          </UTooltip>
+          <span v-else class="text-muted">Nobody</span>
         </dd>
         <dt class="text-muted">Created</dt>
         <dd class="text-default"><NuxtTime :datetime="task.createdAt" relative :title="formatDateTime(task.createdAt)" /></dd>

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
 definePageMeta({ layout: 'auth' })
-useSeoMeta({ title: 'Choose a new password · Ticketer' })
+useSeoMeta({ title: 'Choose a new password' })
 
 const route = useRoute()
 const schema = z

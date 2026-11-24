@@ -5,7 +5,7 @@ import { z } from 'zod'
 const roleSchema = z.enum(USER_ROLES)
 
 definePageMeta({ middleware: ['auth', 'admin'] })
-useSeoMeta({ title: 'Members · Ticketer' })
+useSeoMeta({ title: 'Members' })
 
 type Row = PublicUser & { createdAt: string | number }
 const { user: me } = useUserSession()

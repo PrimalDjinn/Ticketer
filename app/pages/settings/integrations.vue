@@ -2,7 +2,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 
 definePageMeta({ middleware: ['auth', 'admin'] })
-useSeoMeta({ title: 'Integrations · Settings · Ticketer' })
+useSeoMeta({ title: 'Integrations · Settings' })
 
 const toast = useToast()
 const { data: apps, refresh } = await useFetch<IntegrationAppDTO[]>('/api/integrations/apps', { default: () => [], deep: true })

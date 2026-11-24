@@ -33,6 +33,8 @@ export default defineEventHandler(async (event) => {
   } else {
     const mode = await getSignupMode()
     if (mode === 'invite') throw createError({ status: 403, message: 'Joining is by invitation only. Ask an admin to invite you.' })
+    // Open sign-up (no invitation) is where bots come in.
+    await requireCaptcha(event)
     role = mode
   }
 

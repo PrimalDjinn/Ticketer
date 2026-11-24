@@ -3,10 +3,13 @@
 definePageMeta({ middleware: ['auth', 'admin'] })
 
 type Mail = { transport: 'cloudflare' | 'smtp' | 'none'; from: { value: string } }
-const [{ data: mail }, { data: providers }, { data: settings }] = await Promise.all([
+const { site } = useSite()
+const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }] = await Promise.all([
   useFetch<Mail>('/api/settings/mail'),
   useFetch<{ password: boolean; oidc: { name: string } | null }>('/api/auth/providers'),
   useFetch<{ signup: SignupMode }>('/api/settings'),
+  useFetch<{ enabled: boolean; hour: number; timeZone: string }>('/api/settings/reminders'),
+  useFetch<{ provider: string; active: boolean; problem: string | null }>('/api/settings/captcha'),
 ])
 
 const signupLabel: Record<SignupMode, string> = {
@@ -17,6 +20,13 @@ const signupLabel: Record<SignupMode, string> = {
 }
 
 const rows = computed(() => [
+  {
+    icon: 'i-lucide-palette',
+    title: 'Branding',
+    to: '/settings/branding',
+    ok: true,
+    status: `${site.value.name}${site.value.logoUrl ? ' · logo' : ''} · ${site.value.accent}`,
+  },
   {
     icon: 'i-lucide-mail',
     title: 'Email',
@@ -38,11 +48,35 @@ const rows = computed(() => [
       : 'Email and password',
   },
   {
+    icon: 'i-lucide-shield-check',
+    title: 'Bot protection',
+    to: '/settings/bot-protection',
+    ok: !!captcha.value?.active,
+    status: !captcha.value
+      ? 'Unknown'
+      : captcha.value.active
+        ? `${captcha.value.provider === 'turnstile' ? 'Cloudflare Turnstile' : 'Google reCAPTCHA'} on sign-up and visitor forms`
+        : captcha.value.provider !== 'none'
+          ? `Not active: ${captcha.value.problem}`
+          : 'Off — sign-up and visitor forms are not checked',
+  },
+  {
     icon: 'i-lucide-door-open',
     title: 'Who can sign up',
     to: '/users',
     ok: true,
     status: settings.value ? signupLabel[settings.value.signup] : 'Unknown',
+  },
+  {
+    icon: 'i-lucide-alarm-clock',
+    title: 'Due-date reminders',
+    to: '/settings/reminders',
+    ok: true,
+    status: !reminders.value
+      ? 'Unknown'
+      : reminders.value.enabled
+        ? `Every day at ${String(reminders.value.hour).padStart(2, '0')}:00 (${reminders.value.timeZone})`
+        : 'Off',
   },
   {
     icon: 'i-lucide-plug',

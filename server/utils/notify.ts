@@ -45,7 +45,7 @@ async function deliverAway(event: H3Event, rows: (typeof schema.notifications.$i
       .where(inArray(schema.users.id, userIds)),
   ])
   const origin = siteOrigin(event)
-  const appName = useRuntimeConfig(event).public.appName || 'Ticketer'
+  const appName = brandName(await readBranding(), event)
 
   // Web Push
   const gone: number[] = []

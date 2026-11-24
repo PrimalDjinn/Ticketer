@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const user = await requireMember(event)
   const subs = await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, user.id))
   if (!subs.length) throw createError({ status: 400, message: 'Push notifications are not on in any browser yet' })
-  const appName = useRuntimeConfig(event).public.appName || 'Ticketer'
+  const appName = brandName(await readBranding(), event)
   const results = await Promise.all(
     subs.map((sub) => sendPush(sub, { title: appName, body: 'Push notifications work.', link: '/account', tag: 'test' }, { subject: siteOrigin(event) })),
   )

@@ -4,7 +4,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
 
 definePageMeta({ layout: 'auth' })
-useSeoMeta({ title: 'Create account · Ticketer' })
+useSeoMeta({ title: 'Create account' })
 
 const schema = z
   .object({
@@ -53,16 +53,21 @@ const { data: availability } = await useFetch('/api/auth/name-available', {
 })
 const nameTaken = computed(() => !!debouncedName.value && /^[a-zA-Z0-9_]{3,30}$/.test(debouncedName.value) && availability.value?.available === false)
 
+// Open sign-up asks for the bot check; invitations and the very first account don't.
+const captcha = useCaptcha(() => !invite.value && !signup.value?.firstAccount)
+const { widget: captchaWidget, token: captchaToken } = captcha
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   error.value = ''
   try {
     const { confirm: _, ...body } = event.data
-    await $fetch('/api/auth/register', { method: 'POST', body: { ...body, invite: invite.value ? inviteToken.value : undefined } })
+    await $fetch('/api/auth/register', { method: 'POST', body: { ...body, invite: invite.value ? inviteToken.value : undefined }, headers: captcha.headers() })
     await refreshSession()
     await navigateTo('/')
   } catch (e) {
     error.value = errorMessage(e, 'Could not create the account')
+    captcha.spent()
   } finally {
     loading.value = false
   }
@@ -81,7 +86,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         </template>
         <template v-else-if="ssoOnly">Accounts are created when you first sign in with {{ sso?.name }}.</template>
         <template v-else-if="closed && sso">Sign in with {{ sso.name }}; otherwise accounts are by invitation.</template>
-        <template v-else-if="closed">Ticketer accounts are by invitation. Ask an admin to invite you.</template>
+        <template v-else-if="closed">Accounts here are by invitation. Ask an admin to invite you.</template>
         <template v-else-if="user?.isGuest">Your conversations so far will move to the new account.</template>
         <template v-else>Track tickets and talk to support in one place.</template>
       </p>
@@ -115,7 +120,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput v-model="state.confirm" type="password" autocomplete="new-password" class="w-full" />
       </UFormField>
       <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="error" />
-      <UButton type="submit" block :loading="loading" :disabled="nameTaken" :label="invite ? 'Join' : 'Create account'" />
+      <CaptchaWidget v-if="captcha.required.value" ref="captchaWidget" v-model="captchaToken" />
+      <UButton type="submit" block :loading="loading" :disabled="nameTaken || !captcha.ready.value" :label="invite ? 'Join' : 'Create account'" />
     </UForm>
 
     <p class="text-center text-sm text-muted">

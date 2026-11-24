@@ -39,11 +39,13 @@ export default defineEventHandler(async (event) => {
   change('startDate', input.startDate)
   change('dueDate', input.dueDate)
 
+  let movedTo: { name: string; isDone: boolean } | null = null
   if (input.statusId !== undefined && input.statusId !== task.statusId) {
     const [from, to] = await Promise.all([
       db.query.projectStatuses.findFirst({ where: eq(schema.projectStatuses.id, task.statusId) }),
       ensureStatusInProject(input.statusId, task.projectId),
     ])
+    movedTo = to
     patch.statusId = to.id
     patch.completedAt = to.isDone ? (task.completedAt ?? new Date()) : null
     if (input.position === undefined) patch.position = await nextPosition(to.id)
@@ -96,8 +98,22 @@ export default defineEventHandler(async (event) => {
 
   const dto = await taskDTO(id)
   publishTask(event, { type: 'task.updated', body: dto })
+
+  const link = `/projects/${project!.key}/${dto.number}`
+  if (newAssignee) await followTask(event, id, [newAssignee])
   if (newAssignee && newAssignee !== user.id) {
-    await notify(event, newAssignee, { type: 'task', message: `${user.name} assigned you ${dto.ref}: ${dto.title}`, link: `/projects/${project!.key}/${dto.number}` })
+    await notify(event, newAssignee, { type: 'task', message: `${user.name} assigned you ${dto.ref}: ${dto.title}`, link })
+  }
+  // Followers hear about the changes that matter to them: a move to another column, and who now owns the task.
+  const news: string[] = []
+  if (movedTo) news.push(movedTo.isDone ? `completed ${dto.ref}` : `moved ${dto.ref} to ${movedTo.name}`)
+  if (patch.assigneeId !== undefined) {
+    const it = news.length ? 'it' : dto.ref
+    const assignee = patch.assigneeId && (patch.assigneeId === user.id ? 'themselves' : (await namesFor([patch.assigneeId])).get(patch.assigneeId))
+    news.push(assignee ? `assigned ${it} to ${assignee}` : `unassigned ${it}`)
+  }
+  if (news.length) {
+    await notifyTaskFollowers(event, id, user.id, { type: 'task', message: `${user.name} ${news.join(' and ')}: ${dto.title}`, link }, [newAssignee])
   }
   return dto
 })

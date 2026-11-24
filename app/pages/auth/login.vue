@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
 definePageMeta({ layout: 'auth' })
-useSeoMeta({ title: 'Sign in · Ticketer' })
+useSeoMeta({ title: 'Sign in' })
 
 const schema = z.object({
   email: z.email('Enter a valid email'),

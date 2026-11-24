@@ -197,6 +197,7 @@ export async function taskDetail(task: TaskRow): Promise<TaskDetailDTO> {
     subtasks: await toTaskDTOs(subtaskRows),
     parent: parent ? { id: parent.id, ref: `${project!.key}-${parent.number}`, title: parent.title } : null,
     relations: await relationsOf(task.id),
+    followers: await taskFollowers(task.id),
     activity: activityRows.map((a) => ({
       id: a.id,
       actorId: a.actorId,
@@ -363,6 +364,7 @@ export async function createTask(
 
   const dto = await taskDTO(task!.id)
   publishTask(event, { type: 'task.created', body: dto })
+  await followTask(event, task!.id, [user.id, task!.assigneeId])
   if (task!.assigneeId && task!.assigneeId !== user.id) {
     await notify(event, task!.assigneeId, { type: 'task', message: `${user.name} assigned you ${dto.ref}: ${task!.title}`, link: `/projects/${project.key}/${task!.number}` })
   }
@@ -527,6 +529,8 @@ export async function spawnNextOccurrence(event: H3Event, user: { id: string; na
     repeatedFromId: task.id,
     ...dates,
   })
+  // The next occurrence keeps the same followers.
+  await followTask(event, next.id, (await taskFollowers(task.id)).map((f) => f.id))
   if (values.length) {
     await db.insert(schema.taskFieldValues).values(values.map((v) => ({ taskId: next.id, fieldId: v.fieldId, value: v.value })))
     publishTask(event, { type: 'task.updated', body: await taskDTO(next.id) })

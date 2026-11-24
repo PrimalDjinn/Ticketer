@@ -31,7 +31,7 @@ export default defineEventHandler(async (event): Promise<PublicTicketPage> => {
       .offset((input.page - 1) * input.pageSize),
     db.select({ value: count() }).from(t).where(filter),
   ])
-  // Same answer for everyone, so browsers may reuse it briefly.
-  setHeader(event, 'cache-control', 'public, max-age=15')
+  // Same answer for everyone; browsers revalidate so live updates are never served stale.
+  setHeader(event, 'cache-control', 'public, no-cache')
   return { items: await toPublicTicketDTOs(rows), total: total?.value ?? 0, page: input.page, pageSize: input.pageSize }
 })

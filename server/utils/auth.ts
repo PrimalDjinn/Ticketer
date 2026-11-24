@@ -94,6 +94,8 @@ export async function ensureUser(event: H3Event) {
     const exists = await db.query.users.findFirst({ where: eq(schema.users.id, session.user.id), columns: { id: true } })
     if (exists) return session.user
   }
+  // A visitor's first ticket or chat creates their guest account: that's where bots are stopped.
+  await requireCaptcha(event)
   const [guest] = await db.insert(schema.users).values({ id: ulid(), isGuest: true, role: 'external' }).returning()
   await startSession(event, guest!)
   return toPublicUser(guest!)

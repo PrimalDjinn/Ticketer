@@ -28,6 +28,7 @@ export function useNotifications() {
 export function useNotificationFeed() {
   const { items, refresh } = useNotifications()
   const toast = useToast()
+  const { site } = useSite()
 
   onRealtime('notification', (notification) => {
     if (items.value.some((n) => n.id === notification.id)) return
@@ -41,7 +42,7 @@ export function useNotificationFeed() {
       new Audio('/notification.mp3').play().catch(() => {})
       // With push on, the service worker shows it (also when the tab is closed); otherwise show it from the page.
       if (!usePush().subscribed.value && 'Notification' in window && Notification.permission === 'granted') {
-        new Notification('Ticketer', { body: notification.message })
+        new Notification(site.value.name, { body: notification.message })
       }
     }
   })

@@ -205,6 +205,10 @@ export type RealtimeEvent =
   | { type: 'conversation.message'; body: ConversationMessageDTO }
   | { type: 'conversation.read'; body: { conversationId: number; userId: string; readAt: string | number | Date } }
   | { type: 'hello'; body: { clientId: string; transport: RealtimeTransport } }
+  /** Public issues, sent to everyone with the site open: newly published, changed, or no longer public. */
+  | { type: 'issue.published'; body: PublicTicketDTO & { actorId: string | null } }
+  | { type: 'issue.updated'; body: PublicTicketDTO }
+  | { type: 'issue.removed'; body: { reference: string } }
   | { type: 'ping'; body: number }
   | TaskRealtime
 
@@ -325,6 +329,13 @@ export interface TaskDetailDTO extends TaskDTO {
   parent: { id: number; ref: string; title: string } | null
   relations: TaskRelationDTO[]
   activity: TaskActivityDTO[]
+  /** People notified about comments, status changes and reassignment. */
+  followers: TaskFollowerDTO[]
+}
+
+export interface TaskFollowerDTO {
+  id: string
+  name: string
 }
 
 /** Board payload: everything needed to render a project without further requests. */
@@ -341,6 +352,7 @@ export type TaskRealtime =
   | { type: 'task.deleted'; body: { id: number; projectId: number } }
   | { type: 'task.comment.created'; body: CommentDTO & { taskId: number } }
   | { type: 'task.comment.deleted'; body: { id: number; taskId: number } }
+  | { type: 'task.followers'; body: { taskId: number; followers: TaskFollowerDTO[] } }
   | { type: 'project.updated'; body: ProjectDTO }
   | { type: 'project.deleted'; body: { id: number } }
   | { type: 'labels.updated'; body: LabelDTO[] }
@@ -354,4 +366,17 @@ export interface PublicOverview {
     urgent: boolean
     latest: { reference: string; title: string; status: TicketStatus; urgency: TicketUrgency; updatedAt: string | number | Date }[]
   }
+}
+
+/** GET /api/public/site: how this site presents itself, and what public forms need. Loaded once per visit. */
+export interface SiteInfo {
+  /** The organisation or product name shown everywhere ("Ticketer" until set). */
+  name: string
+  /** Public URL of the logo, or null for the name alone. */
+  logoUrl: string | null
+  accent: AccentColor
+  /** The organisation's own website, linked from the public pages. */
+  website: string | null
+  /** Bot protection widget for sign-up and visitor forms; null when off. */
+  captcha: { provider: CaptchaProvider; siteKey: string } | null
 }

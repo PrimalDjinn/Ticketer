@@ -194,7 +194,9 @@ function runSearch() {
             </ul>
           </UCard>
 
-          <UCard class="lg:col-span-2">
+          <div class="space-y-6 lg:col-span-2">
+          <HomePublicIssues />
+          <UCard>
             <template #header>
               <h2 class="font-semibold text-highlighted">Find a ticket</h2>
             </template>
@@ -213,6 +215,7 @@ function runSearch() {
               <UButton type="submit" block icon="i-lucide-search" label="Search" variant="subtle" />
             </form>
           </UCard>
+          </div>
         </div>
       </div>
     </template>

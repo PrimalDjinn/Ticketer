@@ -16,7 +16,7 @@ if (error.value) {
 }
 const { data: people } = await useFetch<PublicUser[]>(() => `/api/tickets/${id.value}/mentionable`, { default: () => [] })
 
-useSeoMeta({ title: () => (ticket.value ? `${ticket.value.title} · #${shortRef(ticket.value.reference)} · Ticketer` : 'Ticket · Ticketer') })
+useSeoMeta({ title: () => (ticket.value ? `${ticket.value.title} · #${shortRef(ticket.value.reference)}` : 'Ticket') })
 
 const isReporter = computed(() => !!ticket.value?.creatorId && ticket.value.creatorId === user.value?.id)
 const isPublic = computed(() => ticket.value?.visibility === 'public')

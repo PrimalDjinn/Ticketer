@@ -9,7 +9,7 @@ definePageMeta({
   ],
 })
 const { internal, registered } = useAccess()
-useSeoMeta({ title: () => (!registered.value ? undefined : internal.value ? 'Dashboard · Ticketer' : 'Home · Ticketer') })
+useSeoMeta({ title: () => (!registered.value ? undefined : internal.value ? 'Dashboard' : 'Home') })
 </script>
 
 <template>

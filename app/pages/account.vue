@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** Your account: who you are here, and deleting your account and data. */
 definePageMeta({ middleware: 'auth' })
-useSeoMeta({ title: 'Account · Ticketer' })
+useSeoMeta({ title: 'Account' })
 
 interface AccountView {
   user: PublicUser
@@ -50,6 +50,7 @@ interface NotificationSettings {
   emailIsDefault: boolean
   mailConfigured: boolean
   browsers: { id: number; userAgent: string | null; createdAt: string | number; lastSentAt: string | number | null }[]
+  taskReminders: { on: boolean; schedule: string | null } | null
 }
 const { data: notif, refresh: refreshNotif } = await useFetch<NotificationSettings>('/api/account/notifications', { deep: true })
 const push = usePush()
@@ -62,6 +63,17 @@ async function setEmail(value: boolean) {
     notif.value.emailIsDefault = false
   } catch (e) {
     notif.value.email = !value
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+async function setTaskReminders(value: boolean) {
+  const reminders = notif.value?.taskReminders
+  if (!reminders) return
+  reminders.on = value
+  try {
+    await $fetch('/api/account/notifications', { method: 'PUT', body: { taskReminders: value } })
+  } catch (e) {
+    reminders.on = !value
     toast.add({ title: errorMessage(e), color: 'error' })
   }
 }
@@ -214,6 +226,17 @@ async function remove() {
                 <p v-if="!notif.mailConfigured" class="mt-1 text-xs text-warning">Email isn't set up on this site yet, so nothing is sent for now.</p>
               </div>
               <USwitch :model-value="notif.email" aria-label="Email me notifications" @update:model-value="setEmail" />
+            </div>
+            <div v-if="notif.taskReminders" class="flex items-start justify-between gap-4 px-4 py-3">
+              <div>
+                <p class="text-sm font-medium text-highlighted">Remind me about due tasks</p>
+                <p class="text-sm text-muted">
+                  The day before and on the day a task assigned to you is due (or one you follow that nobody is assigned to).
+                  <template v-if="notif.taskReminders.schedule">Sent at {{ notif.taskReminders.schedule }}.</template>
+                </p>
+                <p v-if="!notif.taskReminders.schedule" class="mt-1 text-xs text-warning">An admin has turned reminders off for this site.</p>
+              </div>
+              <USwitch :model-value="notif.taskReminders.on" aria-label="Remind me about due tasks" @update:model-value="setTaskReminders" />
             </div>
           </div>
         </section>

@@ -3,14 +3,14 @@
  * The front page for visitors who aren't signed in (and guests): ways to get help, the team's typical reply time,
  * and the current public issues. Signed-in people get their dashboard instead.
  */
-const appName = useRuntimeConfig().public.appName || 'Ticketer'
 const { loggedIn } = useUserSession()
-const { data: overview } = await usePublicOverview()
+const { data: overview, refresh: refreshOverview } = await usePublicOverview()
+useLivePublicIssues(refreshOverview)
 const { data: signup } = await useFetch<SignupInfo>('/api/auth/signup', { key: 'signup-info' })
 const canRegister = computed(() => !!signup.value && (signup.value.firstAccount || signup.value.mode !== 'invite'))
 
 useSeoMeta({
-  title: `Help · ${appName}`,
+  title: 'Help',
   description: 'Report an issue, chat with the team, or check the status of known issues.',
 })
 </script>

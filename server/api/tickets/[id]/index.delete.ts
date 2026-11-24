@@ -19,5 +19,6 @@ export default defineEventHandler(async (event) => {
   await db.delete(schema.tickets).where(eq(schema.tickets.id, id)) // comments, watchers and attachment rows cascade
   event.waitUntil(deleteBlobs(files.map((f) => f.pathname)))
   publish(event, [channels.members, ...outside.map(channels.user)], { type: 'ticket.deleted', body: { id } })
+  if (ticket.visibility === 'public') await broadcastPublicIssue(event, ticket, 'removed')
   return { ok: true }
 })

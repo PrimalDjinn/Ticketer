@@ -46,3 +46,32 @@ export const channels = {
   members: 'members',
   user: (id: string) => `user:${id}`,
 }
+
+/** Bot protection for sign-up and visitor forms (see server/utils/captcha.ts). */
+export const CAPTCHA_PROVIDERS = ['turnstile', 'recaptcha'] as const
+export type CaptchaProvider = (typeof CAPTCHA_PROVIDERS)[number]
+/** Request header carrying the widget's token. */
+export const CAPTCHA_HEADER = 'x-captcha-token'
+
+/** Accent colours offered in Settings → Branding (Nuxt UI / Tailwind palette names), with the 600 shade for emails. */
+export const ACCENT_COLOR_NAMES = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'] as const
+export type AccentColor = (typeof ACCENT_COLOR_NAMES)[number]
+export const ACCENT_COLORS: Record<AccentColor, string> = {
+  red: '#dc2626',
+  orange: '#ea580c',
+  amber: '#d97706',
+  yellow: '#ca8a04',
+  lime: '#65a30d',
+  green: '#16a34a',
+  emerald: '#059669',
+  teal: '#0d9488',
+  cyan: '#0891b2',
+  sky: '#0284c7',
+  blue: '#2563eb',
+  indigo: '#4f46e5',
+  violet: '#7c3aed',
+  purple: '#9333ea',
+  fuchsia: '#c026d3',
+  pink: '#db2777',
+  rose: '#e11d48',
+}

@@ -1,3 +1,10 @@
+/** The organisation's name, accent colour and logo (absolute URL, raster images only) — Settings → Branding. */
+export interface MailBrand {
+  name: string
+  color: string
+  logoUrl: string | null
+}
+
 /** Inline styles shared by the email templates (email clients ignore most stylesheets). */
 export const heading = { margin: '0 0 16px', fontSize: '20px', lineHeight: '28px', fontWeight: '600', color: '#18181b' }
 export const paragraph = { margin: '0 0 24px', fontSize: '15px', lineHeight: '24px', color: '#3f3f46' }
