@@ -42,7 +42,9 @@ async function migrate(driver: 'libsql' | 'd1') {
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 )`),
   )
-  const applied = new Set((await db.all<{ name: string }>(sql.raw('SELECT name FROM _hub_migrations'))).map((r) => r.name))
+  // `wrangler d1 migrations apply` records "0001_x.sql", NuxtHub's dev migrator "0001_x": treat them as the same.
+  const strip = (value: string) => value.replace(/\.sql$/, '')
+  const applied = new Set((await db.all<{ name: string }>(sql.raw('SELECT name FROM _hub_migrations'))).map((r) => strip(r.name)))
 
   for (const file of files) {
     const name = file.replace(/\.sql$/, '')
@@ -53,12 +55,14 @@ async function migrate(driver: 'libsql' | 'd1') {
     const statements = (source.includes('--> statement-breakpoint') ? source.split('--> statement-breakpoint') : source.split(/;\s*$/m))
       .map((s) => s.trim())
       .filter(Boolean)
-    const record = sql`INSERT INTO _hub_migrations (name) VALUES (${name})`
+    // On D1, record the name the way wrangler does so a later `wrangler d1 migrations apply` skips it too.
+    const recorded = driver === 'd1' ? `${name}.sql` : name
+    const record = sql`INSERT INTO _hub_migrations (name) VALUES (${recorded})`
     try {
       if (driver === 'd1') {
         // D1 has no interactive transactions; a batch on the raw binding runs atomically.
         const d1 = d1Binding()
-        await d1.batch([...statements.map((statement) => d1.prepare(statement)), d1.prepare('INSERT INTO _hub_migrations (name) VALUES (?)').bind(name)])
+        await d1.batch([...statements.map((statement) => d1.prepare(statement)), d1.prepare('INSERT INTO _hub_migrations (name) VALUES (?)').bind(recorded)])
       } else {
         await db.transaction(async (tx) => {
           for (const statement of statements) await tx.run(sql.raw(statement))
@@ -67,7 +71,7 @@ async function migrate(driver: 'libsql' | 'd1') {
       }
     } catch (error) {
       // Another isolate (or `wrangler d1 migrations apply`) may have applied it at the same moment.
-      const done = await db.all<{ name: string }>(sql`SELECT name FROM _hub_migrations WHERE name = ${name}`)
+      const done = await db.all<{ name: string }>(sql`SELECT name FROM _hub_migrations WHERE name IN (${name}, ${`${name}.sql`})`)
       if (done.length) continue
       throw error
     }
