@@ -7,6 +7,8 @@ const props = withDefaults(
   defineProps<{
     send: (input: { body: string; files: File[]; internal: boolean }) => Promise<unknown>
     allowInternal?: boolean
+    /** Who reads a reply (not a note), for the warning, e.g. the customer's name. */
+    audience?: string
     placeholder?: string
     disabled?: boolean
     autofocus?: boolean
@@ -19,7 +21,9 @@ const props = withDefaults(
 const toast = useToast()
 const body = ref('')
 const files = ref<File[]>([])
-const internal = ref(false)
+// The team starts on an internal note: replying to the customer is the deliberate choice (shown in amber).
+const internal = ref(!!props.allowInternal)
+const outward = computed(() => !!props.allowInternal && !internal.value)
 const pending = ref(0)
 const sending = computed(() => pending.value > 0)
 const dragging = ref(false)
@@ -69,25 +73,15 @@ defineExpose({ focus: () => textarea.value?.textareaRef?.focus() })
 <template>
   <div
     class="relative rounded-lg ring transition"
-    :class="[internal && allowInternal ? 'bg-warning/5 ring-warning/50' : 'bg-default ring-default', dragging ? 'ring-primary' : '']"
+    :class="[outward ? 'bg-warning/5 ring-warning/50' : internal && allowInternal ? 'bg-elevated/40 ring-default' : 'bg-default ring-default', dragging ? 'ring-primary' : '']"
     @dragover.prevent="dragging = true"
     @dragleave="dragging = false"
     @drop.prevent="onDrop"
   >
-    <div v-if="allowInternal" class="flex items-center gap-1 border-b px-1.5 pt-1.5 pb-1" :class="internal ? 'border-warning/30' : 'border-default'" role="radiogroup" aria-label="Message type">
+    <div v-if="allowInternal" class="flex items-center gap-1 border-b px-1.5 pt-1.5 pb-1" :class="outward ? 'border-warning/30' : 'border-default'" role="radiogroup" aria-label="Message type">
       <UButton
         size="xs"
-        :color="internal ? 'neutral' : 'primary'"
-        :variant="internal ? 'ghost' : 'soft'"
-        icon="i-lucide-reply"
-        label="Reply"
-        role="radio"
-        :aria-checked="!internal"
-        @click="internal = false"
-      />
-      <UButton
-        size="xs"
-        :color="internal ? 'warning' : 'neutral'"
+        :color="internal ? 'primary' : 'neutral'"
         :variant="internal ? 'soft' : 'ghost'"
         icon="i-lucide-lock"
         label="Internal note"
@@ -95,7 +89,18 @@ defineExpose({ focus: () => textarea.value?.textareaRef?.focus() })
         :aria-checked="internal"
         @click="internal = true"
       />
-      <span v-if="internal" class="ml-auto hidden pr-1 text-[11px] text-warning sm:inline">Only the team sees notes</span>
+      <UButton
+        size="xs"
+        :color="outward ? 'warning' : 'neutral'"
+        :variant="outward ? 'soft' : 'ghost'"
+        icon="i-lucide-reply"
+        label="Reply"
+        role="radio"
+        :aria-checked="!internal"
+        @click="internal = false"
+      />
+      <span v-if="internal" class="ml-auto hidden pr-1 text-[11px] text-muted sm:inline">Only the team sees notes</span>
+      <span v-else class="ml-auto pr-1 text-[11px] font-medium text-warning">{{ audience ?? 'The customer' }} will see this</span>
     </div>
     <UTextarea
       ref="textarea"
@@ -118,7 +123,7 @@ defineExpose({ focus: () => textarea.value?.textareaRef?.focus() })
       <span v-if="!compact" class="hidden text-[11px] text-dimmed sm:inline">Enter to send · Shift+Enter for a new line</span>
       <UButton
         :icon="internal && allowInternal ? 'i-lucide-lock' : 'i-lucide-send-horizontal'"
-        :color="internal && allowInternal ? 'warning' : 'primary'"
+        :color="outward ? 'warning' : 'primary'"
         size="sm"
         :label="compact ? undefined : internal && allowInternal ? 'Add note' : 'Send'"
         :loading="sending"

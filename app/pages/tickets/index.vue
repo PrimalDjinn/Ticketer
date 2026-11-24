@@ -93,6 +93,31 @@ const setStatus = (ticket: TicketDTO, s: TicketStatus) => patchTicket(ticket, { 
 const assign = (ticket: TicketDTO, assigneeId: string | null) =>
   patchTicket(ticket, { assigneeId }, (t) => (assigneeId ? `Assigned to ${t.assigneeName}` : 'Unassigned'), 'i-lucide-user-check')
 
+// Support → engineering hand-off, same as on the ticket page.
+const { active: projects } = useProjects()
+const handingOff = ref<number | null>(null)
+async function createTaskFrom(ticket: TicketDTO, projectKey: string) {
+  handingOff.value = ticket.id
+  try {
+    const task = await $fetch<TaskDTO & { projectKey: string }>(`/api/tickets/${ticket.id}/task`, { method: 'POST', body: { projectKey } })
+    toast.add({
+      title: `Created ${task.ref}`,
+      description: ticket.title,
+      icon: 'i-lucide-circle-check',
+      color: 'success',
+      actions: [{ label: 'Open', to: `/projects/${projectKey}/${task.number}`, variant: 'outline' }],
+    })
+  } catch (e) {
+    toast.add({ title: errorMessage(e, 'Could not create the task'), color: 'error' })
+  } finally {
+    handingOff.value = null
+  }
+}
+const projectItems = (ticket: TicketDTO) => [
+  [{ type: 'label' as const, label: 'Create task in…' }],
+  projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder-kanban', onSelect: () => createTaskFrom(ticket, p.key) })),
+]
+
 function actionsFor(ticket: TicketDTO) {
   return [
     TICKET_STATUSES.filter((s) => s !== ticket.status).map((s) => ({
@@ -110,6 +135,9 @@ function actionsFor(ticket: TicketDTO) {
         ? { label: 'Make private', icon: 'i-lucide-lock', onSelect: () => patchTicket(ticket, { visibility: 'private' }, () => 'Made private', 'i-lucide-lock') }
         : { label: 'Make public…', icon: 'i-lucide-globe', onSelect: () => navigateTo(`/tickets/${ticket.id}`) },
     ],
+    ...(projects.value.length
+      ? [[{ label: 'Create task in…', icon: 'i-lucide-folder-input', children: projectItems(ticket).slice(1) }]]
+      : []),
   ]
 }
 
@@ -245,7 +273,18 @@ const emptyText = computed(() => {
           />
         </template>
         <template #actions-cell="{ row }">
-          <div class="flex justify-end" @click.stop>
+          <div class="flex justify-end gap-0.5" @click.stop>
+            <UDropdownMenu v-if="projects.length" :items="projectItems(row.original)" :content="{ align: 'end' }">
+              <UTooltip text="Create task in…">
+                <UButton
+                  icon="i-lucide-folder-input"
+                  color="neutral"
+                  variant="ghost"
+                  :loading="handingOff === row.original.id"
+                  :aria-label="`Create a task from ${row.original.title}`"
+                />
+              </UTooltip>
+            </UDropdownMenu>
             <UDropdownMenu :items="actionsFor(row.original)" :content="{ align: 'end' }">
               <UButton icon="i-lucide-ellipsis-vertical" color="neutral" variant="ghost" aria-label="Ticket actions" />
             </UDropdownMenu>

@@ -3,8 +3,9 @@
  * Comment box with @mentions and file attachments, shared by tickets and tasks (`endpoint` is the comments URL). Typing `@` opens a picker of people who can see the ticket;
  * Enter/Tab picks the highlighted person, Ctrl/Cmd+Enter posts.
  *
- * Tickets: `allowInternal` adds a Reply / Internal note switch for staff; `forceInternal` is for replies inside an
- * internal thread. While writing an internal note only people on the team can be mentioned.
+ * Tickets: `allowInternal` adds an Internal note / Reply switch for staff, starting on Internal note; `forceInternal` is for
+ * replies inside an internal thread. While writing an internal note only people on the team can be mentioned. A staff
+ * reply that people outside the team will see is marked in amber, naming `audience`.
  */
 const props = defineProps<{
   endpoint: string
@@ -16,6 +17,8 @@ const props = defineProps<{
   forceInternal?: boolean
   /** Label of the submit button when posting a public comment (default "Comment" / "Reply"). */
   submitLabel?: string
+  /** Who sees a staff reply, for the warning, e.g. "the person who reported it". */
+  audience?: string
 }>()
 const emit = defineEmits<{ posted: [comment: CommentDTO]; cancel: [] }>()
 
@@ -27,11 +30,15 @@ const sending = ref(false)
 const textarea = useTemplateRef<{ textareaRef: HTMLTextAreaElement }>('textarea')
 const dragging = ref(false)
 const chips = useTemplateRef<{ add: (list: FileList | null) => void }>('chips')
-const mode = ref<'reply' | 'internal'>(props.forceInternal ? 'internal' : 'reply')
-const internal = computed(() => !!props.forceInternal || (!!props.allowInternal && mode.value === 'internal'))
+// Staff start on an internal note: replying to people outside the team is the deliberate choice.
+const mode = ref<'reply' | 'internal'>('internal')
+const showSwitch = computed(() => !!props.allowInternal && !props.forceInternal && !props.parentId)
+const internal = computed(() => !!props.forceInternal || (showSwitch.value && mode.value === 'internal'))
+/** A staff message people outside the team will read. */
+const outward = computed(() => !!props.allowInternal && !internal.value)
 const modeItems = [
-  { label: 'Reply', value: 'reply', icon: 'i-lucide-message-square' },
   { label: 'Internal note', value: 'internal', icon: 'i-lucide-lock' },
+  { label: 'Reply', value: 'reply', icon: 'i-lucide-message-square' },
 ]
 
 // --- mentions ---------------------------------------------------------------------------------------------------
@@ -106,7 +113,7 @@ async function submit() {
     body.value = ''
     files.value = []
     mentioned.value = new Map()
-    if (!props.forceInternal) mode.value = 'reply'
+    mode.value = 'internal'
     emit('posted', comment)
   } catch (e) {
     toast.add({ color: 'error', title: errorMessage(e, 'Could not post the comment') })
@@ -132,16 +139,16 @@ function onPaste(event: ClipboardEvent) {
   <div
     class="relative rounded-xl ring transition"
     :class="[
-      internal ? 'bg-amber-50 ring-amber-300 focus-within:ring-amber-500 dark:bg-amber-950/40 dark:ring-amber-800 dark:focus-within:ring-amber-600' : 'bg-default ring-default focus-within:ring-primary',
+      outward ? 'bg-amber-50 ring-amber-300 focus-within:ring-amber-500 dark:bg-amber-950/40 dark:ring-amber-800 dark:focus-within:ring-amber-600' : internal ? 'bg-elevated/40 ring-default focus-within:ring-primary' : 'bg-default ring-default focus-within:ring-primary',
       dragging && 'ring-2 ring-primary',
     ]"
     @dragover.prevent="dragging = true"
     @dragleave="dragging = false"
     @drop.prevent="onDrop"
   >
-    <div v-if="(allowInternal && !parentId) || internal" class="flex flex-wrap items-center gap-2 border-b px-2 py-1.5" :class="internal ? 'border-amber-200 dark:border-amber-900' : 'border-default'">
+    <div v-if="showSwitch || internal || outward" class="flex flex-wrap items-center gap-2 border-b px-2 py-1.5" :class="outward ? 'border-amber-200 dark:border-amber-900' : 'border-default'">
       <UTabs
-        v-if="allowInternal && !forceInternal && !parentId"
+        v-if="showSwitch"
         v-model="mode"
         :items="modeItems"
         :content="false"
@@ -150,9 +157,13 @@ function onPaste(event: ClipboardEvent) {
         color="neutral"
         aria-label="Comment type"
       />
-      <p v-if="internal" class="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+      <p v-if="internal" class="flex items-center gap-1 text-xs text-muted">
         <UIcon name="i-lucide-lock" class="size-3.5" />
         Internal note — only your team can see this
+      </p>
+      <p v-else-if="outward" class="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+        <UIcon name="i-lucide-triangle-alert" class="size-3.5" />
+        Reply — visible to {{ audience ?? 'people outside the team' }}
       </p>
     </div>
     <UTextarea
@@ -191,7 +202,7 @@ function onPaste(event: ClipboardEvent) {
       </li>
     </ul>
 
-    <div class="flex items-center gap-2 border-t px-2 py-1.5" :class="internal ? 'border-amber-200 dark:border-amber-900' : 'border-default'">
+    <div class="flex items-center gap-2 border-t px-2 py-1.5" :class="outward ? 'border-amber-200 dark:border-amber-900' : 'border-default'">
       <FileChips ref="chips" v-model="files" :disabled="sending" class="flex-1" />
       <span class="hidden text-xs text-dimmed sm:inline">Ctrl + Enter</span>
       <UButton v-if="parentId" size="sm" color="neutral" variant="ghost" label="Cancel" @click="emit('cancel')" />
@@ -199,8 +210,8 @@ function onPaste(event: ClipboardEvent) {
         size="sm"
         :loading="sending"
         :disabled="!body.trim() && !files.length"
-        :color="internal ? 'warning' : 'primary'"
-        :icon="internal ? 'i-lucide-lock' : undefined"
+        :color="outward ? 'warning' : 'primary'"
+        :icon="internal ? 'i-lucide-lock' : outward ? 'i-lucide-send' : undefined"
         :label="internal ? 'Add note' : parentId ? 'Reply' : (submitLabel ?? 'Comment')"
         @click="submit"
       />

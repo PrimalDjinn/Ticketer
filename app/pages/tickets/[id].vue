@@ -298,6 +298,7 @@ async function copyReference() {
               :endpoint="`/api/tickets/${ticket.id}/comments`"
               :people="people"
               :allow-internal="staff"
+              :audience="isPublic ? 'everyone — this issue is public' : 'the person who reported it and anyone following'"
               :submit-label="staff ? 'Reply' : 'Comment'"
               :placeholder="staff && isPublic ? 'Reply publicly… anyone with the link can read this' : undefined"
               @posted="addComment"
