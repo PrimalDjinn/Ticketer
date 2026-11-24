@@ -13,6 +13,10 @@ const body = z.object({
   labelIds: z.array(z.number().int().positive()).max(20).optional(),
   /** Board drops send the new column and a position between the neighbouring cards. */
   position: z.number().finite().optional(),
+  repeat: z.enum(TASK_REPEATS).nullable().optional(),
+  repeatInterval: z.number().int().min(1).max(3650).nullable().optional(),
+  /** Custom field values keyed by field id; null clears a value. */
+  fields: z.record(z.string().regex(/^\d+$/), z.unknown()).optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -47,6 +51,24 @@ export default defineEventHandler(async (event) => {
   }
   if (input.position !== undefined) patch.position = input.position
 
+  let becameDone = false
+  if (patch.statusId !== undefined) {
+    const to = await db.query.projectStatuses.findFirst({ where: eq(schema.projectStatuses.id, patch.statusId) })
+    const from = await db.query.projectStatuses.findFirst({ where: eq(schema.projectStatuses.id, task.statusId) })
+    becameDone = !!to?.isDone && !from?.isDone
+  }
+
+  if (input.repeat !== undefined || input.repeatInterval !== undefined) {
+    const repeat = input.repeat !== undefined ? input.repeat : task.repeat
+    const interval = repeat === 'periodically' ? Math.max(1, input.repeatInterval ?? task.repeatInterval ?? 1) : null
+    if (repeat !== task.repeat || interval !== task.repeatInterval) {
+      patch.repeat = repeat
+      patch.repeatInterval = interval
+      const describe = (rule: typeof repeat, days: number | null) => (rule === 'periodically' ? `every ${days} days` : rule)
+      activity.push({ field: 'repeat', from: describe(task.repeat, task.repeatInterval), to: describe(repeat, interval) })
+    }
+  }
+
   let newAssignee: string | null = null
   if (input.assigneeId !== undefined && input.assigneeId !== task.assigneeId) {
     await ensureAssignable(input.assigneeId)
@@ -65,7 +87,12 @@ export default defineEventHandler(async (event) => {
       activity.push({ field: 'labels' })
     }
   }
+  if (input.fields) {
+    for (const name of await applyFieldValues(id, task.projectId, input.fields)) activity.push({ field: 'field', to: name })
+  }
   await recordActivity(id, user.id, activity)
+
+  if (becameDone) await spawnNextOccurrence(event, user, { ...task, ...patch } as typeof task)
 
   const dto = await taskDTO(id)
   publishTask(event, { type: 'task.updated', body: dto })

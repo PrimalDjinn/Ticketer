@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
 const params = z.object({ id: z.string().min(1).max(64) })
-const body = z.object({ role: z.enum(['admin', 'member', 'viewer']) })
+const body = z.object({ role: z.enum(USER_ROLES) })
 
 export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event)

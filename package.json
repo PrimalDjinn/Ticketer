@@ -9,9 +9,9 @@
   },
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build",
-    "build:node": "NITRO_PRESET=node-server nuxt build",
-    "build:cloudflare": "NITRO_PRESET=cloudflare-durable nuxt build",
+    "build": "node scripts/build.mjs",
+    "build:node": "NITRO_PRESET=node-server node scripts/build.mjs",
+    "build:cloudflare": "NITRO_PRESET=cloudflare-durable node scripts/build.mjs",
     "preview": "nuxt preview",
     "start": "node .output/server/index.mjs",
     "postinstall": "nuxt prepare",
@@ -19,13 +19,31 @@
     "db:generate": "nuxt db generate",
     "db:migrate": "nuxt db migrate",
     "db:studio": "drizzle-kit studio",
-    "deploy": "pnpm build:cloudflare && wrangler deploy --config .output/server/wrangler.json",
-    "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json"
+    "deploy": "wrangler deploy",
+    "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json",
+    "admin": "node scripts/admin.mjs",
+    "cf:deploy": "pnpm build:cloudflare && wrangler deploy",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
+    "@dragdroptouch/drag-drop-touch": "^2.0.3",
     "@iconify-json/lucide": "^1.2.147",
     "@nuxt/ui": "^4.13.1",
     "@nuxthub/core": "^0.10.12",
+    "@vue-email/body": "0.0.3",
+    "@vue-email/button": "0.0.3",
+    "@vue-email/container": "0.0.3",
+    "@vue-email/head": "0.0.3",
+    "@vue-email/heading": "0.0.3",
+    "@vue-email/hr": "0.0.3",
+    "@vue-email/html": "0.0.3",
+    "@vue-email/link": "0.0.3",
+    "@vue-email/preview": "0.0.3",
+    "@vue-email/render": "^0.0.9",
+    "@vue-email/section": "0.0.3",
+    "@vue-email/text": "0.0.3",
     "@vueuse/core": "^14.4.0",
     "@vueuse/integrations": "^14.4.0",
     "consola": "^3.4.2",
@@ -48,9 +66,24 @@
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^7.0.4",
     "@types/sortablejs": "^1.15.9",
+    "@vitejs/plugin-vue": "^6.0.11",
     "drizzle-kit": "^0.31.11",
     "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
     "vue-tsc": "^3.3.11",
     "wrangler": "^4.166.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "NUXT_APP_SECRET": {
+        "description": "Seals sign-in cookies and encrypts saved secrets. Generate one with `openssl rand -base64 32` (at least 32 characters). Keep it: changing it signs everyone out."
+      },
+      "NUXT_ADMIN_EMAIL": {
+        "description": "Email for the first admin account, created on the first visit. Leave empty and the first person to register becomes admin."
+      },
+      "NUXT_ADMIN_PASSWORD": {
+        "description": "Password for that first admin (at least 8 characters). Change it after signing in."
+      }
+    }
   }
 }

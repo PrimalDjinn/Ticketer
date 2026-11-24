@@ -16,7 +16,20 @@ const schema = z
   .refine((v) => v.password === v.confirm, { message: 'Passwords do not match', path: ['confirm'] })
 type Schema = z.output<typeof schema>
 
-const state = reactive<Partial<Schema>>({ email: '', name: '', password: '', confirm: '' })
+const route = useRoute()
+const inviteToken = computed(() => (typeof route.query.invite === 'string' && route.query.invite ? route.query.invite : undefined))
+const [{ data: signup }, { data: providers }] = await Promise.all([
+  useFetch<SignupInfo>('/api/auth/signup', { query: { invite: inviteToken } }),
+  useFetch<AuthProviders>('/api/auth/providers', { default: () => ({ password: true, oidc: null }) }),
+])
+const invite = computed(() => signup.value?.invite ?? null)
+const sso = computed(() => providers.value.oidc)
+/** SSO-only: accounts come from the identity provider; an invitation is picked up by email when they sign in. */
+const ssoOnly = computed(() => !!sso.value && !providers.value.password)
+/** Without an invitation, the form only shows for the first account or when an admin has opened sign-up. */
+const closed = computed(() => !!signup.value && !invite.value && !signup.value.firstAccount && signup.value.mode === 'invite')
+
+const state = reactive<Partial<Schema>>({ email: invite.value?.email ?? '', name: '', password: '', confirm: '' })
 const loading = ref(false)
 const error = ref('')
 const { fetch: refreshSession, user } = useUserSession()
@@ -28,6 +41,7 @@ watch(
   (email) => {
     if (!nameTouched.value) state.name = (email ?? '').split('@')[0]!.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30)
   },
+  { immediate: true },
 )
 
 const debouncedName = refDebounced(toRef(state, 'name'), 400)
@@ -44,7 +58,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   error.value = ''
   try {
     const { confirm: _, ...body } = event.data
-    await $fetch('/api/auth/register', { method: 'POST', body })
+    await $fetch('/api/auth/register', { method: 'POST', body: { ...body, invite: invite.value ? inviteToken.value : undefined } })
     await refreshSession()
     await navigateTo('/')
   } catch (e) {
@@ -58,19 +72,39 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 <template>
   <div class="space-y-6">
     <div class="space-y-1 text-center">
-      <h1 class="text-xl font-semibold text-highlighted">Create your account</h1>
+      <h1 class="text-xl font-semibold text-highlighted">{{ invite ? 'Accept your invitation' : closed && !sso ? 'Invitation needed' : 'Create your account' }}</h1>
       <p class="text-sm text-muted">
-        <template v-if="user?.isGuest">Your conversations so far will move to the new account.</template>
+        <template v-if="invite">
+          <span v-if="invite.invitedBy" class="font-medium text-default">{{ invite.invitedBy }}</span>
+          <template v-else>You were</template>
+          {{ invite.invitedBy ? 'invited you' : 'invited' }} to join as {{ rolePhrase(invite.role) }}.
+        </template>
+        <template v-else-if="ssoOnly">Accounts are created when you first sign in with {{ sso?.name }}.</template>
+        <template v-else-if="closed && sso">Sign in with {{ sso.name }}; otherwise accounts are by invitation.</template>
+        <template v-else-if="closed">Ticketer accounts are by invitation. Ask an admin to invite you.</template>
+        <template v-else-if="user?.isGuest">Your conversations so far will move to the new account.</template>
         <template v-else>Track tickets and talk to support in one place.</template>
       </p>
     </div>
 
-    <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-      <UFormField label="Email" name="email">
-        <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" autofocus />
+    <UAlert v-if="signup?.inviteError" color="warning" variant="subtle" icon="i-lucide-mail-warning" :title="signup.inviteError" />
+
+    <template v-if="sso">
+      <UButton to="/auth/oidc/login" external block size="lg" color="neutral" variant="outline" icon="i-lucide-key-round" :label="`Continue with ${sso.name}`" />
+      <p v-if="invite" class="-mt-3 text-center text-xs text-muted">Use {{ invite.email }} there and the invitation applies.</p>
+      <div v-if="!closed && !ssoOnly" class="flex items-center gap-3 text-xs text-dimmed">
+        <span class="h-px flex-1 bg-(--ui-border)" />
+        or with a password
+        <span class="h-px flex-1 bg-(--ui-border)" />
+      </div>
+    </template>
+
+    <UForm v-if="!closed && !ssoOnly" :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+      <UFormField label="Email" name="email" :help="invite ? 'The invitation is for this address.' : undefined">
+        <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" :readonly="!!invite" :autofocus="!invite" />
       </UFormField>
       <UFormField label="Username" name="name" :error="nameTaken ? 'That username is taken' : undefined">
-        <UInput v-model="state.name" autocomplete="username" class="w-full" @input="nameTouched = true">
+        <UInput v-model="state.name" autocomplete="username" class="w-full" :autofocus="!!invite" @input="nameTouched = true">
           <template #leading><span class="text-sm text-dimmed">@</span></template>
         </UInput>
       </UFormField>
@@ -81,7 +115,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <UInput v-model="state.confirm" type="password" autocomplete="new-password" class="w-full" />
       </UFormField>
       <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="error" />
-      <UButton type="submit" block :loading="loading" :disabled="nameTaken" label="Create account" />
+      <UButton type="submit" block :loading="loading" :disabled="nameTaken" :label="invite ? 'Join' : 'Create account'" />
     </UForm>
 
     <p class="text-center text-sm text-muted">

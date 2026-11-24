@@ -2,7 +2,7 @@
 import type { TabsItem } from '@nuxt/ui'
 import { useSortable } from '@vueuse/integrations/useSortable'
 
-/** Project settings: general details, the workflow columns and the workspace labels. */
+/** Project settings: general details, the workflow columns, custom fields and the workspace labels. */
 const open = defineModel<boolean>('open', { default: false })
 const props = defineProps<{ project: ProjectDTO; labels: LabelDTO[] }>()
 const emit = defineEmits<{ updated: [project: ProjectDTO]; 'update:labels': [labels: LabelDTO[]] }>()
@@ -11,10 +11,11 @@ const { user } = useUserSession()
 const toast = useToast()
 const isAdmin = computed(() => user.value?.role === 'admin')
 
-const tab = ref<'general' | 'workflow' | 'labels'>('general')
+const tab = ref<'general' | 'workflow' | 'fields' | 'labels'>('general')
 const tabs: TabsItem[] = [
   { label: 'General', value: 'general', icon: 'i-lucide-settings-2' },
   { label: 'Workflow', value: 'workflow', icon: 'i-lucide-columns-3' },
+  { label: 'Fields', value: 'fields', icon: 'i-lucide-text-cursor-input' },
   { label: 'Labels', value: 'labels', icon: 'i-lucide-tags' },
 ]
 
@@ -347,8 +348,12 @@ watch(
         </div>
       </div>
 
+      <!-- Custom fields -->
+      <!-- v-show keeps unsaved field edits when switching tabs. -->
+      <ProjectFieldsSettings v-show="tab === 'fields'" :key="open ? 'open' : 'closed'" :project="project" @updated="(p) => emit('updated', p)" />
+
       <!-- Labels -->
-      <div v-else class="space-y-4 p-4 sm:p-6">
+      <div v-if="tab === 'labels'" class="space-y-4 p-4 sm:p-6">
         <p class="text-sm text-muted">Labels are shared by every project in the workspace.</p>
 
         <form class="flex items-center gap-2" @submit.prevent="addLabel">

@@ -22,6 +22,55 @@
       "when": 1795454853541,
       "tag": "0002_drop_is_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795456633404,
+      "tag": "0003_relations_repeat_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795458024575,
+      "tag": "0004_ticket_assignee",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795497378757,
+      "tag": "0005_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795497978802,
+      "tag": "0006_external_public_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795499218165,
+      "tag": "0007_sso_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795503714131,
+      "tag": "0008_account_deletion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795504892696,
+      "tag": "0009_push_and_email_notifications",
+      "breakpoints": true
     }
   ]
 }

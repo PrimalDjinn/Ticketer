@@ -1,38 +1,54 @@
-import { and, count, desc, eq, gte, inArray, like, lte, or, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNull, lte, or, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
 const query = z.object({
   status: z.enum(TICKET_STATUSES).optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   q: z.string().trim().max(200).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  /** Internal people: only tickets they opened. */
   mine: z.stringbool().optional(),
+  /** Internal people: `me`, `none`, or a user id. */
+  assignee: z.string().max(64).optional(),
+  /** Internal people: public or private tickets only. */
+  visibility: z.enum(TICKET_VISIBILITIES).optional(),
+  /** People outside the team: their own tickets (default) or every public one. */
+  scope: z.enum(['mine', 'public']).default('mine'),
 })
 
 export default defineEventHandler(async (event) => {
-  const user = await requireUser(event)
+  const user = await ticketViewer(event)
   const input = await getValidatedQuery(event, query.parse)
+  const internal = isInternal(user)
   const t = schema.tickets
   const where: (SQL | undefined)[] = []
 
-  if (!user.isAdmin || input.mine) where.push(eq(t.creatorId, user.id))
+  if (internal) {
+    if (input.mine) where.push(eq(t.creatorId, user.id))
+    if (input.visibility) where.push(eq(t.visibility, input.visibility))
+    if (input.assignee) {
+      where.push(input.assignee === 'none' ? isNull(t.assigneeId) : eq(t.assigneeId, input.assignee === 'me' ? user.id : input.assignee))
+    }
+  } else {
+    where.push(input.scope === 'public' ? eq(t.visibility, 'public') : eq(t.creatorId, user.id))
+  }
   if (input.status) where.push(eq(t.status, input.status))
   if (input.from) where.push(gte(t.createdAt, input.from))
   if (input.to) where.push(lte(t.createdAt, new Date(input.to.getTime() + 86_400_000 - 1)))
   if (input.q) {
-    const term = `%${input.q.replace(/[%_]/g, (m) => `\\${m}`)}%`
-    const people = user.isAdmin
+    // Only the team may search by reporter name or email.
+    const people = internal
       ? await db
           .select({ id: schema.users.id })
           .from(schema.users)
-          .where(or(like(schema.users.name, term), like(schema.users.email, term)))
+          .where(or(likeText(schema.users.name, input.q), likeText(schema.users.email, input.q)))
           .limit(200)
       : []
     where.push(
-      or(like(t.reference, term), like(t.info, term), people.length ? inArray(t.creatorId, people.map((p) => p.id)) : undefined),
+      or(likeText(t.reference, input.q), likeText(t.title, input.q), likeText(t.info, input.q), people.length ? inArray(t.creatorId, people.map((p) => p.id)) : undefined),
     )
   }
 
@@ -48,5 +64,5 @@ export default defineEventHandler(async (event) => {
     db.select({ value: count() }).from(t).where(filter),
   ])
 
-  return { items: await withCreatorNames(rows), total: total?.value ?? 0, page: input.page, pageSize: input.pageSize }
+  return { items: await withCreatorNames(rows, user), total: total?.value ?? 0, page: input.page, pageSize: input.pageSize }
 })

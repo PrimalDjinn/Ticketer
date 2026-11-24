@@ -16,6 +16,48 @@ const loading = ref(false)
 const error = ref('')
 const route = useRoute()
 const { fetch: refreshSession } = useUserSession()
+const [{ data: signup }, { data: providers }] = await Promise.all([
+  useFetch<SignupInfo>('/api/auth/signup'),
+  useFetch<AuthProviders>('/api/auth/providers', { default: () => ({ password: true, oidc: null }) }),
+])
+
+const redirect = computed(() => {
+  const value = route.query.redirect
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/'
+})
+const sso = computed(() => providers.value.oidc)
+const ssoHref = computed(() => `/auth/oidc/login${redirect.value !== '/' ? `?redirect=${encodeURIComponent(redirect.value)}` : ''}`)
+/** SSO-only: the password form is a break-glass for admins, behind `?password`. */
+const showPassword = computed(() => providers.value.password || 'password' in route.query)
+const canRegister = computed(() => providers.value.password && !!signup.value && (signup.value.firstAccount || signup.value.mode !== 'invite'))
+
+// Errors from the single sign-on callback (`oidc_…`) and from links other apps open (`launch_…`).
+const problems: Record<string, { title: string; description?: string }> = {
+  oidc_disabled: { title: 'Single sign-on is not set up', description: 'Sign in with your email and password, or ask an admin.' },
+  oidc_state: { title: 'That sign-in took too long', description: 'It expired or was started in another browser. Try again.' },
+  oidc_denied: { title: 'Sign-in was cancelled', description: 'The identity provider did not let you through. Try again, or ask an admin for access.' },
+  oidc_failed: { title: 'Single sign-on failed', description: 'Try again. If it keeps failing, an admin can find the reason in the server log.' },
+  oidc_unverified_email: {
+    title: 'Your email is not verified',
+    description: 'An account with your email already exists here, but your identity provider has not verified that address, so it was not linked. Sign in with your password, or ask an admin.',
+  },
+  oidc_no_email: { title: 'No email address was shared', description: 'Your identity provider did not share an email address. Ask an admin to check the scopes.' },
+  oidc_no_access: { title: 'You do not have access yet', description: 'Ask an admin for an invitation.' },
+  oidc_invite_used: { title: 'Your invitation was already used', description: 'Try signing in again.' },
+  launch_invalid: { title: 'This link is not valid', description: 'Go back to the app you came from and try again.' },
+  launch_used: { title: 'This sign-in link was already used', description: 'Go back to the app you came from and open it again.' },
+  launch_replayed: { title: 'This sign-in link was already used', description: 'Go back to the app you came from and open it again.' },
+  launch_expired: { title: 'This sign-in link has expired', description: 'Links work for a few minutes. Go back to the app you came from and open it again.' },
+  launch_signature: { title: 'This link could not be verified', description: 'Go back to the app you came from and try again.' },
+  launch_disabled: { title: 'This integration is turned off', description: 'Sign in here directly, or contact support.' },
+  launch_team: { title: 'You are on the team', description: 'Team accounts cannot be signed in by other apps. Sign in here directly.' },
+  launch_no_account: { title: 'You need an account first', description: 'The app you came from cannot create accounts. Sign in, or ask for an invitation.' },
+}
+const problem = computed(() => {
+  const code = route.query.error
+  if (typeof code !== 'string' || !code) return null
+  return problems[code] ?? { title: 'Something went wrong signing you in', description: 'Try again.' }
+})
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
@@ -23,8 +65,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
     await $fetch('/api/auth/login', { method: 'POST', body: event.data })
     await refreshSession()
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/'
-    await navigateTo(redirect)
+    await navigateTo(redirect.value)
   } catch (e) {
     error.value = errorMessage(e, 'Could not sign in')
   } finally {
@@ -40,23 +81,53 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <p class="text-sm text-muted">Sign in to manage your tickets</p>
     </div>
 
-    <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+    <UAlert v-if="problem" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="problem.title" :description="problem.description" />
+
+    <template v-if="sso">
+      <UButton :to="ssoHref" external block size="lg" color="neutral" variant="outline" icon="i-lucide-key-round" :label="`Continue with ${sso.name}`" />
+      <div v-if="showPassword" class="flex items-center gap-3 text-xs text-dimmed">
+        <span class="h-px flex-1 bg-(--ui-border)" />
+        or with your password
+        <span class="h-px flex-1 bg-(--ui-border)" />
+      </div>
+    </template>
+
+    <UForm v-if="showPassword" :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+      <UAlert
+        v-if="!providers.password"
+        color="neutral"
+        variant="subtle"
+        icon="i-lucide-shield"
+        title="Password sign-in is for admins only"
+        description="Everyone else signs in with single sign-on."
+      />
       <UFormField label="Email" name="email">
-        <UInput v-model="state.email" type="email" autocomplete="email" placeholder="you@company.com" class="w-full" autofocus />
+        <UInput v-model="state.email" type="email" autocomplete="email" placeholder="you@company.com" class="w-full" :autofocus="!sso" />
       </UFormField>
       <UFormField label="Password" name="password">
-        <template #hint>
+        <template v-if="providers.password" #hint>
           <ULink to="/auth/forgot" class="text-xs text-primary">Forgot password?</ULink>
         </template>
         <UInput v-model="state.password" type="password" autocomplete="current-password" class="w-full" />
       </UFormField>
       <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="error" />
-      <UButton type="submit" block :loading="loading" label="Sign in" />
+      <UButton type="submit" block :loading="loading" label="Sign in" :color="sso ? 'neutral' : 'primary'" :variant="sso ? 'subtle' : 'solid'" />
     </UForm>
 
-    <p class="text-center text-sm text-muted">
+    <p v-if="canRegister" class="text-center text-sm text-muted">
       New here?
       <ULink to="/auth/register" class="font-medium text-primary">Create an account</ULink>
     </p>
+    <p v-else-if="!showPassword" class="text-center text-xs text-dimmed">
+      <ULink :to="{ query: { ...route.query, password: null } }" class="hover:text-muted">Admin sign-in with a password</ULink>
+    </p>
+
+    <div class="space-y-3 border-t border-default pt-5">
+      <p class="text-center text-xs font-medium text-dimmed">Need help without signing in?</p>
+      <div class="grid grid-cols-2 gap-2">
+        <UButton to="/issues" icon="i-lucide-activity" label="Status and issues" color="neutral" variant="outline" block />
+        <UButton icon="i-lucide-messages-square" label="Start a chat" color="neutral" variant="outline" block @click="openSupportChat()" />
+      </div>
+    </div>
   </div>
 </template>

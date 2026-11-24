@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import vue from '@vitejs/plugin-vue'
 
 // Two deploy targets from one codebase:
 //   - Cloudflare (`pnpm build:cloudflare`, preset cloudflare-durable): D1 + R2 + a Durable Object for realtime.
@@ -7,17 +8,8 @@ import { fileURLToPath } from 'node:url'
 const preset = process.env.NITRO_PRESET || ''
 const isCloudflare = preset.startsWith('cloudflare')
 
-// Cloudflare resources come from the environment so each deployment (or fork) brings its own account's IDs.
-// Create them with `wrangler d1 create ticketer` and `wrangler r2 bucket create ticketer-files`.
-const cloudflare = {
-  workerName: process.env.CF_WORKER_NAME || 'ticketer',
-  d1DatabaseId: process.env.CF_D1_DATABASE_ID || '',
-  r2Bucket: process.env.CF_R2_BUCKET || 'ticketer-files',
-}
-if (isCloudflare && !cloudflare.d1DatabaseId) {
-  console.warn('[ticketer] CF_D1_DATABASE_ID is not set: the build works, but `wrangler deploy` needs a real D1 database id.')
-  cloudflare.d1DatabaseId = '00000000-0000-0000-0000-000000000000'
-}
+// Cloudflare resources are declared in ./wrangler.jsonc; scripts/build.mjs applies per-deployment IDs from the
+// environment (CF_D1_DATABASE_ID, CF_R2_BUCKET, CF_WORKER_NAME, CF_CUSTOM_DOMAIN, CF_SEND_EMAIL) after the build.
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
@@ -37,29 +29,52 @@ export default defineNuxtConfig({
 
   hub: {
     db: isCloudflare
-      ? { dialect: 'sqlite', driver: 'd1', connection: { databaseId: cloudflare.d1DatabaseId } }
+      ? // No database id here: the `DB` binding comes from wrangler.jsonc (NuxtHub would add a duplicate binding).
+        { dialect: 'sqlite', driver: 'd1' }
       : {
           dialect: 'sqlite',
-          // libsql reads DATABASE_URL at runtime in production builds, `.data/db/sqlite.db` in dev.
+          // Production builds read LIBSQL_URL at runtime (see server/plugins/00.database-url.ts). Dev pins its own
+          // file so a DATABASE_URL left over from another project (e.g. postgres://) can never be picked up.
           driver: 'libsql',
+          ...(process.env.NODE_ENV !== 'production' && { connection: { url: process.env.LIBSQL_URL || 'file:.data/db/sqlite.db' } }),
           // The database lives on the container volume, not the build machine: migrations run on boot
           // (server/plugins/migrations.ts) instead of at build time.
           applyMigrationsDuringBuild: false,
         },
     // Relative on purpose: NuxtHub would otherwise bake the build machine's absolute path into the server bundle.
     // Resolved against the working directory at runtime (`/app/.data/blob` in the Docker image).
-    blob: isCloudflare ? { driver: 'cloudflare-r2', binding: 'BLOB', bucketName: cloudflare.r2Bucket } : { driver: 'fs', dir: '.data/blob' },
+    blob: isCloudflare ? { driver: 'cloudflare-r2', binding: 'BLOB' } : { driver: 'fs', dir: '.data/blob' },
   },
 
   runtimeConfig: {
-    // Shared secret for Worker -> Durable Object publish calls. Only checked on Cloudflare.
-    realtimeSecret: '',
+    // Initial admin, created on first start when no account has this email (NUXT_ADMIN_EMAIL, NUXT_ADMIN_PASSWORD,
+    // NUXT_ADMIN_NAME). An existing account is never modified. See also `pnpm admin`.
+    admin: {
+      email: '',
+      password: '',
+      name: 'admin',
+    },
     mail: {
       // Sender for password reset mail (NUXT_MAIL_FROM), e.g. "Ticketer <noreply@your-domain>". On Cloudflare the
       // domain must be onboarded to Email Sending. Unset = reset links are logged instead of mailed.
       from: '',
       // Node only: SMTP connection string, e.g. smtps://user:pass@smtp.gmail.com:465
       smtpUrl: '',
+    },
+    // Single sign-on with any OpenID Connect provider (Authentik, Keycloak, Entra ID, Google…), NUXT_OIDC_*. Each field
+    // set here wins over Settings → Sign-in, where admins can configure the rest. Empty = not pinned. See the README.
+    oidc: {
+      enabled: '', // NUXT_OIDC_ENABLED: true/false; implied true when issuer and client id both come from env
+      issuer: '', // NUXT_OIDC_ISSUER, e.g. https://auth.example.com/application/o/ticketer/
+      clientId: '',
+      clientSecret: '',
+      name: '', // button label; default "Single sign-on"
+      scopes: '', // default "openid email profile"
+      defaultRole: '', // role for brand-new people: external (default), viewer, member, or none
+      groupsClaim: '', // default "groups"
+      roleGroups: '', // e.g. admin:ticketer-admins,member:staff,viewer:auditors,external:customers
+      only: '', // true = hide the password form and password sign-up/reset
+      redirectUrl: '', // only behind proxies that hide the public origin: https://tickets.example.com/auth/oidc/callback
     },
     public: {
       appName: 'Ticketer',
@@ -69,24 +84,18 @@ export default defineNuxtConfig({
   nitro: {
     // Workers send mail through the EMAIL binding; keep the SMTP client out of the Worker bundle.
     alias: isCloudflare ? { nodemailer: fileURLToPath(new URL('./server/stubs/nodemailer.ts', import.meta.url)) } : {},
+    // Email templates in server/emails are Vue components (Vue Email); the server bundle needs to compile them.
+    rollupConfig: { plugins: [vue()] },
     experimental: {
       websocket: true,
       tasks: true,
     },
     // Migrations ship with the server so the Node build can apply them to the volume on boot.
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations/sqlite' }],
+    // Bindings, the Durable Object and its migrations live in ./wrangler.jsonc, which Nitro merges into the output.
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
-      wrangler: {
-        name: cloudflare.workerName,
-        observability: { enabled: true, logs: { enabled: true, invocation_logs: true } },
-        durable_objects: {
-          bindings: [{ name: '$DurableObject', class_name: '$DurableObject' }],
-        },
-        migrations: [{ tag: 'v1', new_sqlite_classes: ['$DurableObject'] }],
-        send_email: [{ name: 'EMAIL' }],
-      },
     },
   },
 

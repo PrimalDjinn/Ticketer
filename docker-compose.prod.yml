@@ -8,6 +8,7 @@ x-runtime-secrets: &runtime-secrets
   secrets:
     - nuxt_app_secret
     - nuxt_mail_smtp_url
+    - nuxt_admin_password
 
 services:
   ticketer:
@@ -19,6 +20,8 @@ services:
     environment:
       PORT: 3000
       NUXT_MAIL_FROM: ${NUXT_MAIL_FROM:-}
+      # First admin, created on first start if no account has this email (or run: exec ticketer node scripts/admin.mjs)
+      NUXT_ADMIN_EMAIL: ${NUXT_ADMIN_EMAIL:-}
     ports:
       - "${TICKETER_BIND:-127.0.0.1}:${TICKETER_PORT:-3000}:3000"
     volumes:
@@ -51,3 +54,5 @@ secrets:
     environment: NUXT_APP_SECRET
   nuxt_mail_smtp_url:
     environment: NUXT_MAIL_SMTP_URL
+  nuxt_admin_password:
+    environment: NUXT_ADMIN_PASSWORD

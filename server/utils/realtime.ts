@@ -52,11 +52,12 @@ const POLL_HOLD_MS = 25_000
 const POLL_EXPIRE_MS = 70_000
 const HEARTBEAT_MS = 25_000
 
-type ChannelUser = { id: string; isAdmin: boolean; isGuest?: boolean }
+type ChannelUser = { id: string; isAdmin: boolean; isGuest?: boolean; role: UserRole }
 
+/** Internal people hear project, task, ticket and inbox activity; everyone else only what is addressed to them. */
 export function channelsFor(user: ChannelUser) {
   const list = [channels.all, channels.user(user.id)]
-  if (!user.isGuest) list.push(channels.members)
+  if (isInternal(user)) list.push(channels.members)
   if (user.isAdmin) list.push(channels.admins)
   return list
 }

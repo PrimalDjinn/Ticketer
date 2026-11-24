@@ -1,0 +1,26 @@
+// Cloudflare resources for Ticketer. Used by the "Deploy to Cloudflare" button and by `pnpm build:cloudflare`, which
+// merges this file into the generated .output/server/wrangler.json (see scripts/build.mjs).
+//
+// IDs are left out on purpose: on the first deploy, wrangler creates the D1 database and the R2 bucket in your account
+// (automatic provisioning). To use existing resources instead, set CF_D1_DATABASE_ID / CF_R2_BUCKET when building.
+// The Worker applies database migrations itself on its first request.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ticketer",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": true } },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ticketer",
+      // NuxtHub copies the migrations next to the generated config and sets migrations_dir there.
+      "migrations_table": "_hub_migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "BLOB" }],
+  // Realtime: every WebSocket/SSE/long-poll connection is held by one Durable Object.
+  "durable_objects": { "bindings": [{ "name": "$DurableObject", "class_name": "$DurableObject" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["$DurableObject"] }]
+  // Email: add `"send_email": [{ "name": "EMAIL" }]` (or build with CF_SEND_EMAIL=true) once your domain is onboarded to
+  // Cloudflare Email Sending. Without it, invitation and reset links are written to the Worker logs.
+}

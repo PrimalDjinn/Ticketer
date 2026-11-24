@@ -3,7 +3,7 @@ import { db, schema } from 'hub:db'
 
 /** Everything the board and list views need in one request. */
 export default defineEventHandler(async (event): Promise<ProjectBoardDTO> => {
-  await requireMember(event)
+  await requireInternal(event)
   const { key } = await getValidatedRouterParams(event, projectKeyParams.parse)
   const project = await loadProject(key)
   const rows = await db

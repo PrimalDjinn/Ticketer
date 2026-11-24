@@ -1,12 +1,19 @@
 <script setup lang="ts">
 /** Properties sidebar of a task: every change is emitted as a PATCH body; the parent applies it optimistically. */
-export type TaskPatch = Partial<Pick<TaskDetailDTO, 'title' | 'description' | 'statusId' | 'priority' | 'assigneeId' | 'startDate' | 'dueDate' | 'labelIds'>>
+export type TaskPatch = Partial<
+  Pick<TaskDetailDTO, 'title' | 'description' | 'statusId' | 'priority' | 'assigneeId' | 'startDate' | 'dueDate' | 'labelIds' | 'repeat' | 'repeatInterval'>
+> & {
+  /** Custom field values by field id; `null` clears one. */
+  fields?: Record<number, FieldValue | null>
+}
 
 const props = defineProps<{
   task: TaskDetailDTO
   statuses: StatusDTO[]
   labels: LabelDTO[]
   members: PublicUser[]
+  /** The project's custom fields, in display order. */
+  fields?: FieldDTO[]
   readonly?: boolean
   /** Two property pairs per row (slide-over). */
   wide?: boolean
@@ -24,6 +31,13 @@ const status = computed(() => props.statuses.find((s) => s.id === props.task.sta
 const statusItems = computed(() => props.statuses.map((s) => ({ label: s.name, value: s.id, color: s.color, isDone: s.isDone })))
 const priorityItems = [...TASK_PRIORITIES].reverse().map((p) => ({ label: priorityMeta[p].label, value: p, icon: priorityMeta[p].icon }))
 const assignee = computed(() => props.members.find((m) => m.id === props.task.assigneeId))
+const { user: me } = useUserSession()
+const canTakeIt = computed(() => !props.readonly && !!me.value && props.task.assigneeId !== me.value.id && props.members.some((m) => m.id === me.value!.id))
+function takeIt() {
+  if (canTakeIt.value) emit('patch', { assigneeId: me.value!.id })
+}
+// "I" takes the open task, like Kaneo/Linear's assign-to-me.
+defineShortcuts({ i: takeIt })
 const assigneeItems = computed(() => [
   { label: 'Unassigned', value: UNASSIGNED, avatar: undefined },
   ...props.members.map((m) => ({ label: m.name, value: m.id, avatar: { text: initials(m.name) } })),
@@ -35,6 +49,8 @@ const dueTone = computed(() => {
   const state = dueState(props.task.dueDate, status.value?.isDone)
   return state === 'overdue' ? 'text-error' : state === 'soon' ? 'text-warning' : ''
 })
+
+const orderedFields = computed(() => [...(props.fields ?? [])].sort((a, b) => a.position - b.position))
 
 function setDate(field: 'startDate' | 'dueDate', event: Event) {
   const value = (event.target as HTMLInputElement).value || null
@@ -93,7 +109,7 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
     </dd>
 
     <dt class="text-muted">Assignee</dt>
-    <dd>
+    <dd class="flex items-center gap-1">
       <USelectMenu
         :model-value="task.assigneeId ?? UNASSIGNED"
         :items="assigneeItems"
@@ -112,6 +128,11 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
           <span class="truncate" :class="!assignee && 'text-muted'">{{ assignee?.name ?? 'Unassigned' }}</span>
         </span>
       </USelectMenu>
+      <UTooltip v-if="canTakeIt" text="Assign to me">
+        <UButton icon="i-lucide-user-check" size="xs" color="neutral" variant="ghost" aria-label="Assign to me" @click="takeIt">
+          <template #trailing><UKbd value="I" size="sm" class="hidden sm:inline-flex" /></template>
+        </UButton>
+      </UTooltip>
     </dd>
 
     <dt class="text-muted">Labels</dt>
@@ -182,5 +203,35 @@ function setDate(field: 'startDate' | 'dueDate', event: Event) {
         @change="setDate('dueDate', $event)"
       />
     </dd>
+
+    <dt class="flex items-center gap-1 self-start pt-1 text-muted">Repeat</dt>
+    <dd>
+      <ProjectRepeatPicker
+        :repeat="task.repeat"
+        :interval="task.repeatInterval"
+        :disabled="readonly"
+        inline
+        @change="(v) => emit('patch', v)"
+      />
+    </dd>
+
+    <template v-for="field in orderedFields" :key="field.id">
+      <dt class="flex min-w-0 items-center gap-1 text-muted" :class="field.type === 'multiselect' && 'self-start pt-1'">
+        <span class="truncate" :title="field.name">{{ field.name }}</span>
+        <template v-if="field.required">
+          <span class="text-error" aria-hidden="true">*</span>
+          <span class="sr-only">(required)</span>
+        </template>
+      </dt>
+      <dd class="min-w-0">
+        <ProjectFieldInput
+          :field="field"
+          :value="task.fieldValues[field.id]"
+          :disabled="readonly"
+          inline
+          @commit="(v) => emit('patch', { fields: { [field.id]: v } })"
+        />
+      </dd>
+    </template>
   </dl>
 </template>

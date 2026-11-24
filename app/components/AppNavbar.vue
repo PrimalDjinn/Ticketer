@@ -24,6 +24,7 @@ const connection = computed(() => {
       <slot name="title" />
     </template>
     <template #right>
+      <IntegrationsBackLink class="hidden sm:flex" />
       <slot name="right" />
       <ClientOnly>
         <UTooltip :text="connection.label">
@@ -31,6 +32,9 @@ const connection = computed(() => {
             <span class="size-2 rounded-full" :class="connection.dot" />
           </span>
         </UTooltip>
+      </ClientOnly>
+      <ClientOnly>
+        <ChatWidget variant="inline" />
       </ClientOnly>
       <UTooltip text="Notifications">
         <UButton color="neutral" variant="ghost" square aria-label="Notifications" @click="open = true">

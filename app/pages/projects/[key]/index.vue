@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import type { TaskMove } from '~/components/project/Board.vue'
+import type { TaskMove } from '~/composables/taskDragDrop'
+import type { TaskDates } from '~/utils/dates'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'internal'] })
 
 const route = useRoute()
 const router = useRouter()
@@ -19,14 +20,17 @@ const { data: board, error, refresh } = await useFetch<ProjectBoardDTO>(() => `/
 useSeoMeta({ title: () => `${board.value?.project.name ?? 'Project'} · Ticketer` })
 
 // --- URL state: view and open task -----------------------------------------------------------------------------------
-type View = 'board' | 'list'
+const viewQuery = z.enum(['board', 'list', 'calendar', 'gantt']).catch('board')
+type View = z.output<typeof viewQuery>
 const view = computed<View>({
-  get: () => (route.query.view === 'list' ? 'list' : 'board'),
-  set: (value) => router.replace({ query: { ...route.query, view: value === 'list' ? 'list' : undefined } }),
+  get: () => viewQuery.parse(route.query.view),
+  set: (value) => router.replace({ query: { ...route.query, view: value === 'board' ? undefined : value } }),
 })
 const viewItems = [
-  { label: 'Board', value: 'board', icon: 'i-lucide-square-kanban' },
+  { label: 'Board', value: 'board', icon: 'i-lucide-kanban' },
   { label: 'List', value: 'list', icon: 'i-lucide-list' },
+  { label: 'Calendar', value: 'calendar', icon: 'i-lucide-calendar' },
+  { label: 'Gantt', value: 'gantt', icon: 'i-lucide-gantt-chart' },
 ]
 
 const taskQuery = z.coerce.number().int().positive().nullable().catch(null)
@@ -53,16 +57,33 @@ function upsert(task: TaskDTO) {
   else board.value.tasks.splice(index, 1, task)
 }
 
+async function assignTask(task: TaskDTO, assigneeId: string | null) {
+  const before = task.assigneeId
+  task.assigneeId = assigneeId
+  try {
+    upsert(await $fetch<TaskDTO>(`/api/tasks/${task.id}`, { method: 'PATCH', body: { assigneeId } }))
+  } catch (e) {
+    task.assigneeId = before
+    toast.add({ title: 'Could not change the assignee', description: errorMessage(e), color: 'error' })
+  }
+}
+
 async function moveTask({ taskId, statusId, prevId, nextId }: TaskMove) {
   if (!board.value) return
   const task = board.value.tasks.find((t) => t.id === taskId)
   if (!task) return
-  const column = board.value.tasks.filter((t) => t.statusId === statusId && t.id !== taskId)
-  const prev = prevId === null ? undefined : column.find((t) => t.id === prevId)
-  const next = nextId === null ? undefined : column.find((t) => t.id === nextId)
-  // Without visible neighbours (empty or filtered column, or a status change from the list) the task goes last.
-  const position =
-    prev || next ? positionBetween(prev?.position, next?.position) : positionBetween(column.reduce<number | undefined>((max, t) => (max === undefined || t.position > max ? t.position : max), undefined))
+  // Neighbours come from what was visible; the position is computed in the full column (hidden, filtered-out tasks
+  // included), so the task lands directly after its visible predecessor — or directly before its visible successor
+  // when dropped first — and never jumps over tasks the filter hid.
+  const column = board.value.tasks
+    .filter((t) => t.statusId === statusId && t.parentId === null && t.id !== taskId)
+    .sort((a, b) => a.position - b.position || a.id - b.id)
+  const prevIndex = prevId === null ? -1 : column.findIndex((t) => t.id === prevId)
+  const nextIndex = nextId === null ? -1 : column.findIndex((t) => t.id === nextId)
+  let position: number
+  if (prevIndex !== -1) position = positionBetween(column[prevIndex]!.position, column[prevIndex + 1]?.position)
+  else if (nextIndex !== -1) position = positionBetween(column[nextIndex - 1]?.position, column[nextIndex]!.position)
+  else position = positionBetween(column.at(-1)?.position) // empty column or a status change from the list menu: last
 
   const before = { statusId: task.statusId, position: task.position }
   Object.assign(task, { statusId, position })
@@ -71,6 +92,20 @@ async function moveTask({ taskId, statusId, prevId, nextId }: TaskMove) {
   } catch (e) {
     Object.assign(task, before)
     toast.add({ title: 'Could not move the task', description: errorMessage(e), color: 'error' })
+  }
+}
+
+/** Calendar and Gantt rescheduling: optimistic, rolled back with a toast when the server refuses. */
+async function rescheduleTask(task: TaskDTO, dates: TaskDates) {
+  const current = board.value?.tasks.find((t) => t.id === task.id)
+  if (!current) return
+  const before: TaskDates = { startDate: current.startDate, dueDate: current.dueDate }
+  Object.assign(current, dates)
+  try {
+    upsert(await $fetch<TaskDTO>(`/api/tasks/${task.id}`, { method: 'PATCH', body: dates }))
+  } catch (e) {
+    Object.assign(current, before)
+    toast.add({ title: 'Could not reschedule the task', description: errorMessage(e), color: 'error' })
   }
 }
 
@@ -183,11 +218,12 @@ defineShortcuts({
           :readonly="readonly"
           @open="openTask"
           @move="moveTask"
+          @assign="assignTask"
           @created="upsert"
           @drag="(id) => (draggingId = id)"
         />
         <ProjectList
-          v-else
+          v-else-if="view === 'list'"
           :project-key="board.project.key"
           :statuses="statuses"
           :tasks="visibleTasks"
@@ -196,13 +232,35 @@ defineShortcuts({
           :readonly="readonly"
           @open="openTask"
           @move="moveTask"
+          @assign="assignTask"
           @created="upsert"
+        />
+        <ProjectCalendar
+          v-else-if="view === 'calendar'"
+          :project-key="board.project.key"
+          :statuses="statuses"
+          :tasks="visibleTasks"
+          :members="board.members"
+          :readonly="readonly"
+          @open="openTask"
+          @reschedule="rescheduleTask"
+          @created="upsert"
+        />
+        <ProjectGantt
+          v-else
+          :statuses="statuses"
+          :tasks="visibleTasks"
+          :members="board.members"
+          :readonly="readonly"
+          @open="openTask"
+          @reschedule="rescheduleTask"
         />
 
         <ProjectNewTaskModal
           v-if="!readonly"
           v-model:open="newTaskOpen"
           :project-key="board.project.key"
+          :fields="board.project.fields"
           :statuses="statuses"
           :members="board.members"
           :labels="board.labels"

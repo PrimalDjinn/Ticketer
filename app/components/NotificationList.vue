@@ -3,12 +3,16 @@ const emit = defineEmits<{ navigate: [] }>()
 const { items, markRead, markAllRead, refresh } = useNotifications()
 await refresh()
 
-const permission = ref<NotificationPermission | 'unsupported'>('default')
-onMounted(() => {
-  permission.value = 'Notification' in window ? Notification.permission : 'unsupported'
-})
-async function enableDesktop() {
-  permission.value = await Notification.requestPermission()
+const push = usePush()
+const toast = useToast()
+onMounted(() => push.refresh())
+async function enablePush() {
+  try {
+    if (await push.enable()) toast.add({ title: 'Push notifications are on for this browser', color: 'success' })
+    else toast.add({ title: 'Notifications are blocked for this site', description: 'Allow them in the browser’s site settings, then try again.', color: 'warning' })
+  } catch (e) {
+    toast.add({ title: errorMessage(e, 'Could not turn on push notifications'), color: 'error' })
+  }
 }
 
 async function open(n: NotificationDTO) {
@@ -30,13 +34,13 @@ const icons: Record<string, string> = {
 <template>
   <div class="flex flex-col gap-3">
     <UAlert
-      v-if="permission === 'default'"
+      v-if="push.checked.value && push.supported.value && !push.subscribed.value && push.permission.value !== 'denied'"
       color="neutral"
       variant="subtle"
       icon="i-lucide-bell-ring"
-      title="Get desktop alerts"
-      description="See notifications even when this tab is in the background."
-      :actions="[{ label: 'Enable', onClick: enableDesktop }]"
+      title="Get notified when Ticketer is closed"
+      description="Push notifications reach this device even with no tab open."
+      :actions="[{ label: 'Turn on', loading: push.busy.value, onClick: enablePush }]"
     />
 
     <div v-if="items.length" class="flex justify-end">

@@ -36,6 +36,18 @@ const parentLink = computed(() => {
   const parent = task.value?.parent
   return parent ? `/projects/${task.value!.project.key}/${parent.ref.slice(parent.ref.lastIndexOf('-') + 1)}` : ''
 })
+const fields = computed(() => board.value?.project.fields ?? [])
+const openBlockers = computed(() => (task.value?.relations ?? []).filter((r) => r.kind === 'blocked_by' && !r.task.isDone))
+const repeatText = computed(() => (task.value ? repeatLabel(task.value.repeat, task.value.repeatInterval) : ''))
+
+function onRelationsChanged(relations: TaskRelationDTO[]) {
+  const current = task.value
+  if (!current) return
+  current.relations = relations
+  current.blockedByCount = relations.filter((r) => r.kind === 'blocked_by' && !r.task.isDone).length
+  syncExtras()
+}
+
 const commentsEndpoint = computed(() => `/api/tasks/${task.value?.id}/comments`)
 
 // Fields that change outside TaskDTO (activity, files, subtasks, description) are re-read in one go after changes.
@@ -49,6 +61,8 @@ const syncExtras = useDebounceFn(async () => {
     task.value.attachments = fresh.attachments
     task.value.subtasks = fresh.subtasks
     task.value.parent = fresh.parent
+    task.value.relations = fresh.relations
+    task.value.blockedByCount = fresh.blockedByCount
     if (!editingDescription.value) task.value.description = fresh.description
   } catch {
     // The next realtime event or resync will catch up.
@@ -59,9 +73,19 @@ const syncExtras = useDebounceFn(async () => {
 async function patch(body: TaskPatch) {
   const current = task.value
   if (!current || !canEdit.value) return
+  const { fields, ...plain } = body
   const before: Record<string, unknown> = {}
-  for (const key of Object.keys(body) as (keyof TaskPatch)[]) before[key] = current[key]
-  Object.assign(current, body)
+  for (const key of Object.keys(plain) as (keyof typeof plain)[]) before[key] = current[key]
+  Object.assign(current, plain)
+  if (fields) {
+    before.fieldValues = current.fieldValues
+    const values = { ...current.fieldValues }
+    for (const [id, value] of Object.entries(fields)) {
+      if (value === null) delete values[Number(id)]
+      else values[Number(id)] = value
+    }
+    current.fieldValues = values
+  }
   try {
     const updated = await $fetch<TaskDTO>(`/api/tasks/${current.id}`, { method: 'PATCH', body })
     Object.assign(current, updated)
@@ -235,6 +259,7 @@ onRealtime('task.updated', (t) => {
   } else if (current.subtasks.some((s) => s.id === t.id)) {
     current.subtasks = current.subtasks.filter((s) => s.id !== t.id) // moved to another parent
   }
+  if (t.id !== current.id && current.relations.some((r) => r.task.id === t.id)) syncExtras() // a linked task changed status or title
 })
 onRealtime('task.created', (t) => {
   if (task.value && t.parentId === task.value.id) upsertSubtask(t)
@@ -338,6 +363,11 @@ function openInPlace(event: MouseEvent, id: number) {
           <span class="size-1.5 rounded-full" :class="color(projectColor).dot" />
           {{ task.ref }}
         </NuxtLink>
+        <UTooltip v-if="task.repeat" :text="`Repeats: ${repeatText.toLowerCase()}`">
+          <span class="inline-flex shrink-0 items-center text-primary" tabindex="0" :aria-label="`Repeats ${repeatText.toLowerCase()}`">
+            <UIcon name="i-lucide-repeat" class="size-4" />
+          </span>
+        </UTooltip>
         <template v-if="task.parent">
           <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
           <NuxtLink
@@ -387,6 +417,30 @@ function openInPlace(event: MouseEvent, id: number) {
         </button>
         <template v-else>{{ task.title }}</template>
       </h1>
+
+      <UAlert
+        v-if="task.blockedByCount > 0 && !status?.isDone"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-octagon-x"
+        :title="`Blocked by ${task.blockedByCount} open ${task.blockedByCount === 1 ? 'task' : 'tasks'}`"
+        :ui="{ root: 'py-2.5', title: 'text-sm' }"
+      >
+        <template v-if="openBlockers.length" #description>
+          <span class="flex flex-wrap gap-x-3 gap-y-1">
+            <NuxtLink
+              v-for="r in openBlockers"
+              :key="r.id"
+              :to="`/projects/${r.task.projectKey}/${r.task.number}`"
+              class="inline-flex min-w-0 items-center gap-1 rounded hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+              @click.capture="openInPlace($event, r.task.id)"
+            >
+              <span class="font-mono text-xs">{{ r.task.ref }}</span>
+              <span class="max-w-60 truncate">{{ r.task.title }}</span>
+            </NuxtLink>
+          </span>
+        </template>
+      </UAlert>
     </header>
 
     <!-- Main column -->
@@ -450,6 +504,14 @@ function openInPlace(event: MouseEvent, id: number) {
         :readonly="!canEdit"
         :in-place="compact"
         @upsert="upsertSubtask"
+        @open="(id) => emit('open', id)"
+      />
+
+      <ProjectTaskRelations
+        :task="task"
+        :readonly="!canEdit"
+        :in-place="compact"
+        @changed="onRelationsChanged"
         @open="(id) => emit('open', id)"
       />
 
@@ -531,6 +593,7 @@ function openInPlace(event: MouseEvent, id: number) {
         :statuses="statuses"
         :labels="labels"
         :members="members"
+        :fields="fields"
         :readonly="!canEdit"
         :wide="compact"
         @patch="patch"

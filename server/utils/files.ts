@@ -1,10 +1,10 @@
 import type { H3Event } from 'h3'
 import { blob } from 'hub:blob'
 import { db, schema } from 'hub:db'
-import { inArray } from 'drizzle-orm'
+import { inArray, type SQL } from 'drizzle-orm'
 import { ulid } from 'ulid'
 
-type Owner = { ticketId: number } | { commentId: number } | { messageId: number } | { taskId: number } | { taskCommentId: number }
+type Owner = { ticketId: number } | { commentId: number } | { messageId: number } | { taskId: number } | { taskCommentId: number } | { conversationMessageId: number }
 
 /** Reads every `File` sent under `field` in a multipart body, plus the plain text fields. */
 export async function readMultipart(event: H3Event, field = 'files') {
@@ -49,6 +49,17 @@ export async function storeAttachments(folder: string, files: File[], owner: Own
   }
 }
 
+/**
+ * Removes attachment rows matching `where` and returns their stored paths, so the caller can delete the files once the
+ * owning rows are gone. Explicit on purpose: some attachment foreign keys were added by `ALTER TABLE` migrations, which
+ * created them without ON DELETE CASCADE on existing databases, so the parent's delete would otherwise be refused.
+ */
+export async function takeAttachments(where: SQL | undefined) {
+  if (!where) return []
+  const rows = await db.delete(schema.attachments).where(where).returning({ pathname: schema.attachments.pathname })
+  return rows.map((r) => r.pathname)
+}
+
 export async function deleteBlobs(pathnames: string[]) {
   if (pathnames.length) await blob.del(pathnames).catch((error) => useLogger('files').error('blob delete failed', error))
 }
@@ -64,7 +75,7 @@ export function toAttachmentDTO(a: typeof schema.attachments.$inferSelect): Atta
   }
 }
 
-export async function attachmentsFor(column: 'ticketId' | 'commentId' | 'messageId' | 'taskId' | 'taskCommentId', ids: number[]) {
+export async function attachmentsFor(column: 'ticketId' | 'commentId' | 'messageId' | 'taskId' | 'taskCommentId' | 'conversationMessageId', ids: number[]) {
   const map = new Map<number, AttachmentDTO[]>()
   if (!ids.length) return map
   const rows = await db.select().from(schema.attachments).where(inArray(schema.attachments[column], ids))

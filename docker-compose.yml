@@ -6,7 +6,9 @@ services:
     restart: unless-stopped
     secrets:
       - nuxt_app_secret
+      - nuxt_admin_password
     environment:
+      NUXT_ADMIN_EMAIL: ${NUXT_ADMIN_EMAIL:-}
       NUXT_MAIL_FROM: ${NUXT_MAIL_FROM:-}
       NUXT_MAIL_SMTP_URL: ${NUXT_MAIL_SMTP_URL:-}
     ports:
@@ -20,3 +22,5 @@ volumes:
 secrets:
   nuxt_app_secret:
     environment: NUXT_APP_SECRET
+  nuxt_admin_password:
+    environment: NUXT_ADMIN_PASSWORD

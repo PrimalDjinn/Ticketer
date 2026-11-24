@@ -5,7 +5,7 @@ import { db, schema } from 'hub:db'
 const params = z.object({ id: z.coerce.number().int().positive(), commentId: z.coerce.number().int().positive() })
 
 export default defineEventHandler(async (event) => {
-  const user = await requireMember(event)
+  const user = await requireInternal(event)
   const { id, commentId } = await getValidatedRouterParams(event, params.parse)
   const comment = await db.query.taskComments.findFirst({ where: eq(schema.taskComments.id, commentId) })
   if (!comment || comment.taskId !== id) throw createError({ status: 404, message: 'Comment not found' })
@@ -19,9 +19,9 @@ export default defineEventHandler(async (event) => {
     grew = false
     for (const c of all) if (c.parentId && thread.has(c.parentId) && !thread.has(c.id)) (thread.add(c.id), (grew = true))
   }
-  const files = await db.select({ pathname: schema.attachments.pathname }).from(schema.attachments).where(inArray(schema.attachments.taskCommentId, [...thread]))
+  const files = await takeAttachments(inArray(schema.attachments.taskCommentId, [...thread]))
   await db.delete(schema.taskComments).where(eq(schema.taskComments.id, commentId))
-  event.waitUntil(deleteBlobs(files.map((f) => f.pathname)))
+  event.waitUntil(deleteBlobs(files))
   for (const removed of thread) publishTask(event, { type: 'task.comment.deleted', body: { id: removed, taskId: id } })
   return { ok: true }
 })

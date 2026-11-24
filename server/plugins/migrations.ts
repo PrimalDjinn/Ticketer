@@ -4,25 +4,34 @@ import { db } from 'hub:db'
 const log = useLogger('migrations')
 
 /**
- * Node/Bun production: apply pending migrations to the SQLite file on boot. The file lives on the deployment volume,
- * which the build machine never sees, so NuxtHub's build-time migration step is disabled for this target.
+ * Production: apply pending migrations before serving requests.
+ *  - Node/Bun: the SQLite file lives on the deployment volume, which the build machine never sees, so NuxtHub's
+ *    build-time migration step is disabled for this target.
+ *  - Cloudflare: a fresh deployment (e.g. from the Deploy button) gets an empty D1 database; the Worker brings it up to
+ *    date on its first request. CI may also run `wrangler d1 migrations apply` first; both use the same bookkeeping.
  *
  * Bookkeeping matches NuxtHub and `wrangler d1 migrations apply` (`_hub_migrations`, one row per file name), so a
- * database can move between targets. Cloudflare applies migrations with `pnpm cf:migrate`; dev uses NuxtHub's own.
+ * database can move between targets. Dev uses NuxtHub's own migrator.
  */
 export default defineNitroPlugin((nitroApp) => {
   if (import.meta.dev) return
-  if (useRuntimeConfig().hub.db?.driver !== 'libsql') return
+  const driver = useRuntimeConfig().hub.db?.driver
+  if (driver !== 'libsql' && driver !== 'd1') return
 
-  // Nitro does not await async plugins, so hold requests until the schema is in place.
-  const ready = migrate().catch((error) => {
-    log.error('failed', error)
-    throw error
+  // Nitro does not await async plugins, so hold requests until the schema is in place. A failed attempt is retried on
+  // the next request instead of wedging the isolate.
+  let ready: Promise<void> | undefined
+  nitroApp.hooks.hook('request', () => {
+    ready ??= migrate(driver).catch((error) => {
+      log.error('failed', error)
+      ready = undefined
+      throw error
+    })
+    return ready
   })
-  nitroApp.hooks.hook('request', () => ready)
 })
 
-async function migrate() {
+async function migrate(driver: 'libsql' | 'd1') {
   const storage = useStorage('assets:migrations')
   const files = (await storage.getKeys()).filter((key) => key.endsWith('.sql')).sort()
 
@@ -33,7 +42,9 @@ async function migrate() {
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 )`),
   )
-  const applied = new Set((await db.all<{ name: string }>(sql.raw('SELECT name FROM _hub_migrations'))).map((r) => r.name))
+  // `wrangler d1 migrations apply` records "0001_x.sql", NuxtHub's dev migrator "0001_x": treat them as the same.
+  const strip = (value: string) => value.replace(/\.sql$/, '')
+  const applied = new Set((await db.all<{ name: string }>(sql.raw('SELECT name FROM _hub_migrations'))).map((r) => strip(r.name)))
 
   for (const file of files) {
     const name = file.replace(/\.sql$/, '')
@@ -44,10 +55,42 @@ async function migrate() {
     const statements = (source.includes('--> statement-breakpoint') ? source.split('--> statement-breakpoint') : source.split(/;\s*$/m))
       .map((s) => s.trim())
       .filter(Boolean)
-    await db.transaction(async (tx) => {
-      for (const statement of statements) await tx.run(sql.raw(statement))
-      await tx.run(sql`INSERT INTO _hub_migrations (name) VALUES (${name})`)
-    })
+    // On D1, record the name the way wrangler does so a later `wrangler d1 migrations apply` skips it too.
+    const recorded = driver === 'd1' ? `${name}.sql` : name
+    const record = sql`INSERT INTO _hub_migrations (name) VALUES (${recorded})`
+    try {
+      if (driver === 'd1') {
+        // D1 has no interactive transactions; a batch on the raw binding runs atomically.
+        const d1 = d1Binding()
+        await d1.batch([...statements.map((statement) => d1.prepare(statement)), d1.prepare('INSERT INTO _hub_migrations (name) VALUES (?)').bind(recorded)])
+      } else {
+        await db.transaction(async (tx) => {
+          for (const statement of statements) await tx.run(sql.raw(statement))
+          await tx.run(record)
+        })
+      }
+    } catch (error) {
+      // Another isolate (or `wrangler d1 migrations apply`) may have applied it at the same moment.
+      const done = await db.all<{ name: string }>(sql`SELECT name FROM _hub_migrations WHERE name IN (${name}, ${`${name}.sql`})`)
+      if (done.length) continue
+      throw error
+    }
     log.success(`applied ${name}`)
   }
+}
+
+interface D1Statement {
+  bind(...values: unknown[]): D1Statement
+}
+interface D1Like {
+  prepare(query: string): D1Statement
+  batch(statements: D1Statement[]): Promise<unknown>
+}
+
+/** The Worker's `DB` binding, found the same way NuxtHub's D1 client finds it. */
+function d1Binding(): D1Like {
+  const scope = globalThis as { __env__?: { DB?: D1Like }; DB?: D1Like }
+  const binding = (process.env as Record<string, unknown>).DB ?? scope.__env__?.DB ?? scope.DB
+  if (!binding || typeof (binding as D1Like).batch !== 'function') throw new Error('D1 binding DB not found')
+  return binding as D1Like
 }

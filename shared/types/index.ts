@@ -1,9 +1,12 @@
 // Types shared by the Vue app and the Nitro server (auto-imported from `shared/types`).
-import type { TASK_PRIORITIES, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
+import type { FIELD_TYPES, RELATION_KINDS, SIGNUP_MODES, TASK_PRIORITIES, TASK_REPEATS, TICKET_STATUSES, TICKET_URGENCIES, TICKET_VISIBILITIES, USER_ROLES } from '../utils/constants'
+import type { ConversationDTO, ConversationMessageDTO } from './conversations'
 
 export type TicketStatus = (typeof TICKET_STATUSES)[number]
 
 export type TicketUrgency = (typeof TICKET_URGENCIES)[number]
+
+export type TicketVisibility = (typeof TICKET_VISIBILITIES)[number]
 
 export interface PublicUser {
   id: string
@@ -12,9 +15,39 @@ export interface PublicUser {
   role: UserRole
   isAdmin: boolean
   isGuest: boolean
+  /** admin, member or viewer (not a guest). */
+  isInternal: boolean
 }
 
-export type UserRole = 'admin' | 'member' | 'viewer'
+export type UserRole = (typeof USER_ROLES)[number]
+export type SignupMode = (typeof SIGNUP_MODES)[number]
+
+export interface InviteDTO {
+  id: number
+  email: string
+  role: UserRole
+  invitedBy: string | null
+  createdAt: string | number | Date
+  expiresAt: string | number | Date
+  expired: boolean
+}
+
+/** Returned when an admin creates or renews an invitation; the link is only ever shown at this moment. */
+export interface InviteCreated {
+  invite: InviteDTO
+  link: string
+  emailed: boolean
+}
+
+/** What the sign-up page needs to know before showing the form. */
+export interface SignupInfo {
+  /** True until the first registered account exists; that account becomes the admin. */
+  firstAccount: boolean
+  mode: SignupMode
+  invite: { email: string; role: UserRole; invitedBy: string | null } | null
+  /** Set when an invitation token was given but cannot be used. */
+  inviteError: string | null
+}
 
 export interface AttachmentDTO {
   id: number
@@ -28,11 +61,18 @@ export interface AttachmentDTO {
 export interface TicketDTO {
   id: number
   reference: string
+  /** The ticket's title, or the first line of its description for tickets created before titles existed. */
+  title: string
   info: string
   urgency: TicketUrgency
   status: TicketStatus
   creatorId: string | null
   creatorName?: string | null
+  /** Support person handling the ticket. */
+  assigneeId: string | null
+  assigneeName?: string | null
+  visibility: TicketVisibility
+  publishedAt: string | number | Date | null
   createdAt: string | number | Date
   updatedAt: string | number | Date | null
   resolvedAt: string | number | Date | null
@@ -44,6 +84,10 @@ export interface CommentDTO {
   parentId: number | null
   authorId: string | null
   authorName: string
+  /** The author is on the team (shown with a "Team" badge to people outside it). */
+  authorIsInternal: boolean
+  /** Internal note: only internal people ever receive these. */
+  internal: boolean
   body: string
   createdAt: string | number | Date
   attachments: AttachmentDTO[]
@@ -52,8 +96,65 @@ export interface CommentDTO {
 export interface TicketDetailDTO extends TicketDTO {
   attachments: AttachmentDTO[]
   comments: CommentDTO[]
+  /** Whether the current user follows this ticket, and how many people do. */
+  watching: boolean
+  watcherCount: number
+  /** Support conversation this ticket was opened from (internal people only). */
+  conversationId: number | null
   /** Tasks created from this ticket (visible to members only). */
   tasks: { id: number; ref: string; title: string; projectKey: string; number: number; status: string; isDone: boolean }[]
+}
+
+/**
+ * A public ticket as anyone (no account needed) sees it on the public issues page. Carries no emails, user ids,
+ * internal notes, linked tasks or conversation ids.
+ */
+export interface PublicTicketDTO {
+  id: number
+  reference: string
+  title: string
+  status: TicketStatus
+  urgency: TicketUrgency
+  /** First lines of the description, for lists. */
+  excerpt: string
+  reporterName: string | null
+  /** Display name of the person handling it. */
+  assigneeName: string | null
+  createdAt: string | number | Date
+  publishedAt: string | number | Date | null
+  updatedAt: string | number | Date | null
+  resolvedAt: string | number | Date | null
+  /** Latest public activity (reply, status change or publishing). */
+  lastActivityAt: string | number | Date
+  /** Public replies (internal notes never count). */
+  replyCount: number
+}
+
+export interface PublicCommentDTO {
+  id: number
+  parentId: number | null
+  authorName: string
+  /** Written by someone on the team ("Team" badge). */
+  fromTeam: boolean
+  body: string
+  createdAt: string | number | Date
+  attachments: AttachmentDTO[]
+}
+
+export interface PublicTicketDetailDTO extends PublicTicketDTO {
+  info: string
+  attachments: AttachmentDTO[]
+  comments: PublicCommentDTO[]
+  watcherCount: number
+  /** What the signed-in person may do here; null for anonymous visitors. */
+  viewer: { registered: boolean; internal: boolean; isReporter: boolean; watching: boolean; canReply: boolean; canFollow: boolean } | null
+}
+
+export interface PublicTicketPage {
+  items: PublicTicketDTO[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface MessageDTO {
@@ -100,6 +201,9 @@ export type RealtimeEvent =
   | { type: 'message.created'; body: MessageDTO }
   | { type: 'messages.read'; body: { chatId: string; readerId: string } }
   | { type: 'notification'; body: NotificationDTO }
+  | { type: 'conversation.updated'; body: ConversationDTO }
+  | { type: 'conversation.message'; body: ConversationMessageDTO }
+  | { type: 'conversation.read'; body: { conversationId: number; userId: string; readAt: string | number | Date } }
   | { type: 'hello'; body: { clientId: string; transport: RealtimeTransport } }
   | { type: 'ping'; body: number }
   | TaskRealtime
@@ -113,6 +217,28 @@ export type RealtimeTransport = 'websocket' | 'sse' | 'poll'
 // ---------------------------------------------------------------------------------------------------------------------
 
 export type TaskPriority = (typeof TASK_PRIORITIES)[number]
+export type TaskRepeat = (typeof TASK_REPEATS)[number]
+export type FieldType = (typeof FIELD_TYPES)[number]
+export type RelationKind = (typeof RELATION_KINDS)[number]
+export type FieldValue = string | number | boolean | string[]
+
+export interface FieldDTO {
+  id: number
+  projectId: number
+  name: string
+  type: FieldType
+  /** Choices for select / multiselect. */
+  options: string[]
+  required: boolean
+  position: number
+}
+
+export interface TaskRelationDTO {
+  id: number
+  /** From the point of view of the task being viewed. */
+  kind: RelationKind
+  task: { id: number; ref: string; title: string; projectKey: string; number: number; status: string; statusColor: string; isDone: boolean }
+}
 
 export interface StatusDTO {
   id: number
@@ -138,6 +264,7 @@ export interface ProjectDTO {
   archivedAt: string | number | Date | null
   createdAt: string | number | Date
   statuses: StatusDTO[]
+  fields: FieldDTO[]
   /** Open (not done) / total task counts, for the sidebar and project list. */
   openCount: number
   taskCount: number
@@ -159,6 +286,13 @@ export interface TaskDTO {
   startDate: string | null
   dueDate: string | null
   position: number
+  repeat: TaskRepeat | null
+  /** Days between occurrences when repeat is `periodically`. */
+  repeatInterval: number | null
+  /** Custom field values keyed by field id. */
+  fieldValues: Record<number, FieldValue>
+  /** Open tasks that block this one (drives the "blocked" marker on cards). */
+  blockedByCount: number
   labelIds: number[]
   subtaskCount: number
   subtaskDoneCount: number
@@ -189,6 +323,7 @@ export interface TaskDetailDTO extends TaskDTO {
   comments: CommentDTO[]
   subtasks: TaskDTO[]
   parent: { id: number; ref: string; title: string } | null
+  relations: TaskRelationDTO[]
   activity: TaskActivityDTO[]
 }
 
@@ -209,3 +344,14 @@ export type TaskRealtime =
   | { type: 'project.updated'; body: ProjectDTO }
   | { type: 'project.deleted'; body: { id: number } }
   | { type: 'labels.updated'; body: LabelDTO[] }
+
+/** GET /api/public/overview: shown on the public home, the issues page and the chat widget. */
+export interface PublicOverview {
+  /** Median first reply in support chats over the last 30 days; `text` is null until there's enough data. */
+  reply: { minutes: number | null; sample: number; text: string | null }
+  status: {
+    open: number
+    urgent: boolean
+    latest: { reference: string; title: string; status: TicketStatus; urgency: TicketUrgency; updatedAt: string | number | Date }[]
+  }
+}

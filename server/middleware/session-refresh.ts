@@ -19,7 +19,8 @@ export default defineEventHandler(async (event) => {
     return
   }
   const fresh = toPublicUser(row)
-  if (fresh.role !== session.user.role || fresh.name !== session.user.name || fresh.isGuest !== session.user.isGuest) {
+  const s = session.user
+  if (fresh.role !== s.role || fresh.name !== s.name || fresh.isGuest !== s.isGuest || fresh.isInternal !== s.isInternal || fresh.isAdmin !== s.isAdmin) {
     await replaceUserSession(event, { user: fresh, loggedInAt: session.loggedInAt })
   }
 })

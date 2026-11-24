@@ -1,4 +1,4 @@
 export default defineEventHandler(async (event) => {
-  await requireMember(event)
+  await requireInternal(event)
   return allLabels()
 })
