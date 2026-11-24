@@ -98,6 +98,8 @@ function onKeydown(event: KeyboardEvent) {
 async function submit() {
   if (sending.value || (!body.value.trim() && !files.value.length)) return
   sending.value = true
+  // What was sent, so changes made while it is on its way (more typing, picking Reply) survive.
+  const sent = { body: body.value, files: files.value, mode: mode.value }
   try {
     const form = new FormData()
     form.set('body', body.value.trim())
@@ -110,10 +112,12 @@ async function submit() {
     }
     for (const file of files.value) form.append('files', file)
     const comment = await $fetch<CommentDTO>(props.endpoint, { method: 'POST', body: form })
-    body.value = ''
-    files.value = []
-    mentioned.value = new Map()
-    mode.value = 'internal'
+    // Drop the sent text; keep anything typed after it while it was sending.
+    if (body.value.startsWith(sent.body)) body.value = body.value.slice(sent.body.length).trimStart()
+    if (!body.value) mentioned.value = new Map()
+    if (files.value === sent.files) files.value = []
+    // Back to a note after a reply, unless the person already chose again while it was sending.
+    if (mode.value === sent.mode) mode.value = 'internal'
     emit('posted', comment)
   } catch (e) {
     toast.add({ color: 'error', title: errorMessage(e, 'Could not post the comment') })

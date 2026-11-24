@@ -200,10 +200,8 @@ const customerLink = computed(() => (detail.value ? `/tickets?q=${encodeURICompo
       <div class="border-t border-default p-3 sm:px-6">
         <ConversationComposer
           v-if="canAct"
-          :key="detail.id"
           :send="send"
           allow-internal
-          :audience="detail.customer.name"
           :placeholder="detail.status === 'closed' ? 'Reply (the conversation stays closed)…' : `Reply to ${detail.customer.name}…`"
         />
         <p v-else class="flex items-center gap-2 text-sm text-muted">

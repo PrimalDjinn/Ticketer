@@ -64,5 +64,18 @@ export default defineEventHandler(async (event) => {
     db.select({ value: count() }).from(t).where(filter),
   ])
 
-  return { items: await withCreatorNames(rows, user), total: total?.value ?? 0, page: input.page, pageSize: input.pageSize }
+  const items = await withCreatorNames(rows, user)
+  if (internal && rows.length) {
+    // The team sees which tickets already went to a project, so a ticket isn't handed off twice.
+    const linked = await db
+      .select({ ticketId: schema.tasks.ticketId, number: schema.tasks.number, key: schema.projects.key })
+      .from(schema.tasks)
+      .innerJoin(schema.projects, eq(schema.tasks.projectId, schema.projects.id))
+      .where(inArray(schema.tasks.ticketId, rows.map((r) => r.id)))
+    for (const item of items) {
+      item.tasks = linked.filter((l) => l.ticketId === item.id).map((l) => ({ ref: `${l.key}-${l.number}`, projectKey: l.key, number: l.number }))
+    }
+  }
+
+  return { items, total: total?.value ?? 0, page: input.page, pageSize: input.pageSize }
 })

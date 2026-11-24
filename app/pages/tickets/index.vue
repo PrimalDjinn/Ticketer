@@ -100,6 +100,9 @@ async function createTaskFrom(ticket: TicketDTO, projectKey: string) {
   handingOff.value = ticket.id
   try {
     const task = await $fetch<TaskDTO & { projectKey: string }>(`/api/tickets/${ticket.id}/task`, { method: 'POST', body: { projectKey } })
+    // The table's row object isn't the reactive list item, so update the item itself.
+    const item = data.value.items.find((t) => t.id === ticket.id)
+    if (item) item.tasks = [...(item.tasks ?? []), { ref: task.ref, projectKey, number: task.number }]
     toast.add({
       title: `Created ${task.ref}`,
       description: ticket.title,
@@ -109,10 +112,30 @@ async function createTaskFrom(ticket: TicketDTO, projectKey: string) {
     })
   } catch (e) {
     toast.add({ title: errorMessage(e, 'Could not create the task'), color: 'error' })
+    refresh() // someone else may have created it meanwhile
   } finally {
     handingOff.value = null
   }
 }
+const hasTask = (ticket: TicketDTO) => !!ticket.tasks?.length
+const taskLink = (ticket: TicketDTO) => {
+  const task = ticket.tasks![0]!
+  return `/projects/${task.projectKey}/${task.number}`
+}
+
+// Admins and members can take a ticket; same list as the ticket page's Assignee field.
+const { data: staffPeople } = await useFetch<PublicUser[]>('/api/members', { default: () => [], immediate: staff.value })
+const assignItems = (ticket: TicketDTO) => [
+  ...(ticket.assigneeId ? [{ label: 'Unassign', icon: 'i-lucide-user-x', onSelect: () => assign(ticket, null) }] : []),
+  ...staffPeople.value.map((p) => ({
+    label: p.id === user.value?.id ? `${p.name} (you)` : p.name,
+    avatar: { text: initials(p.name) },
+    suffix: ticket.assigneeId === p.id ? 'Assigned' : undefined,
+    disabled: ticket.assigneeId === p.id,
+    onSelect: () => assign(ticket, p.id),
+  })),
+]
+
 const projectItems = (ticket: TicketDTO) => [
   [{ type: 'label' as const, label: 'Create task in…' }],
   projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder-kanban', onSelect: () => createTaskFrom(ticket, p.key) })),
@@ -129,15 +152,18 @@ function actionsFor(ticket: TicketDTO) {
       ticket.assigneeId === user.value?.id
         ? { label: 'Unassign', icon: 'i-lucide-user-x', onSelect: () => assign(ticket, null) }
         : { label: 'Assign to me', icon: 'i-lucide-user-check', onSelect: () => assign(ticket, user.value!.id) },
+      { label: 'Assign to', icon: 'i-lucide-users', children: assignItems(ticket) },
     ],
     [
       ticket.visibility === 'public'
         ? { label: 'Make private', icon: 'i-lucide-lock', onSelect: () => patchTicket(ticket, { visibility: 'private' }, () => 'Made private', 'i-lucide-lock') }
         : { label: 'Make public…', icon: 'i-lucide-globe', onSelect: () => navigateTo(`/tickets/${ticket.id}`) },
     ],
-    ...(projects.value.length
-      ? [[{ label: 'Create task in…', icon: 'i-lucide-folder-input', children: projectItems(ticket).slice(1) }]]
-      : []),
+    hasTask(ticket)
+      ? [{ label: `Open task ${ticket.tasks![0]!.ref}`, icon: 'i-lucide-square-kanban', to: taskLink(ticket) }]
+      : projects.value.length
+        ? [{ label: 'Create task in…', icon: 'i-lucide-folder-input', children: projectItems(ticket).slice(1) }]
+        : [],
   ]
 }
 
@@ -274,7 +300,10 @@ const emptyText = computed(() => {
         </template>
         <template #actions-cell="{ row }">
           <div class="flex justify-end gap-0.5" @click.stop>
-            <UDropdownMenu v-if="projects.length" :items="projectItems(row.original)" :content="{ align: 'end' }">
+            <UTooltip v-if="hasTask(row.original)" :text="`Open task ${row.original.tasks![0]!.ref}`">
+              <UButton icon="i-lucide-square-kanban" color="neutral" variant="ghost" :to="taskLink(row.original)" :aria-label="`Open task ${row.original.tasks![0]!.ref}`" />
+            </UTooltip>
+            <UDropdownMenu v-else-if="projects.length" :items="projectItems(row.original)" :content="{ align: 'end' }">
               <UTooltip text="Create task in…">
                 <UButton
                   icon="i-lucide-folder-input"

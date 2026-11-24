@@ -65,7 +65,8 @@ a ticket automatically when you open it, reply to it, or are assigned to it.
 Admins and members can assign a ticket to any admin or member.
 
 - On the ticket, choose a person under **Assignee**, or select **Assign to me**.
-- In the ticket list, open a ticket's actions menu and select **Assign to me** or **Unassign**.
+- In the ticket list, open a ticket's actions menu and select **Assign to me**, or **Assign to** and a person. To
+  remove the assignee, select **Unassign** (under **Assign to** when someone else has the ticket).
 
 The assignee is notified and starts following the ticket.
 
@@ -88,6 +89,9 @@ Admins and members can create a task from a ticket:
 1. On the ticket, under **Tasks**, select **Create task in…**. In the **Tickets** list, use the folder button at the
    end of the ticket's row instead.
 2. Choose a project.
+
+A ticket goes to one task only. Once it has one, **Create task in…** is replaced by a link to the task: under **Tasks**
+on the ticket, and as **Open task** in the ticket list.
 
 The task gets the ticket's title and description, followed by a line `— From support ticket #` and the ticket's short
 reference, the one shown in the ticket's header. Its priority follows the ticket's urgency: **Emergency** becomes
