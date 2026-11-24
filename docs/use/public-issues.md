@@ -3,8 +3,24 @@
 This page explains how the team makes a ticket public, what visitors can see, and what stays private. Public issues let
 customers follow known problems and announcements without signing in.
 
-Public issues are listed at `/issues`, with a search box and a status filter. Each issue has its own page at
-`/issues/<reference>`.
+Public issues are listed at `/issues`, on the **Status and known issues** page, with a search box and a status filter.
+Each issue has its own page at `/issues/<reference>`. Visitors reach it from **Status and issues** in the header of the
+public pages, and from the sign-in page.
+
+## The status banner
+
+The top of **Status and known issues**, and the **Current status** section of the public help page at `/`, show a
+one-line status:
+
+| Banner | When |
+| --- | --- |
+| **No known issues** | No public ticket is **Open** or **Pending**. |
+| **N open issues** | That many public tickets are **Open** or **Pending**. It's shown as a warning when any of them has the urgency **Urgent** or **Emergency**. |
+
+The help page also lists those five most recently updated open issues, with their status.
+
+To change what the banner says, change the tickets: publish a ticket to announce a problem, and set it to **Resolved**
+or **Closed** when it's fixed.
 
 ## Make a ticket public
 

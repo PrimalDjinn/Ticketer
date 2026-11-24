@@ -1,5 +1,11 @@
 import type { H3Event } from 'h3'
+import type { Component } from 'vue'
+import { render } from '@vue-email/render'
 import { z } from 'zod'
+import Invitation from '../emails/Invitation.vue'
+import Notification from '../emails/Notification.vue'
+import PasswordReset from '../emails/PasswordReset.vue'
+import TestEmail from '../emails/TestEmail.vue'
 
 const log = useLogger('mail')
 
@@ -109,54 +115,45 @@ export async function sendMail(event: H3Event, mail: Mail, options: { throwError
   }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Templates (Vue Email components in server/emails/), rendered to HTML plus a plain-text version
+// ---------------------------------------------------------------------------------------------------------------------
+
+function appName() {
+  return useRuntimeConfig().public.appName || 'Ticketer'
+}
+
+/** Plain-text rendering: links once, no images/preview text, headings as written, the HTML-only fallback skipped. */
+const plainText = {
+  wordwrap: 100,
+  selectors: [
+    { selector: 'img', format: 'skip' },
+    { selector: '#__vue-email-preview', format: 'skip' },
+    { selector: '.html-only', format: 'skip' },
+    { selector: 'a', options: { linkBrackets: false, hideLinkHrefIfSameAsText: true } },
+    { selector: 'h1', options: { uppercase: false } },
+    { selector: 'hr', format: 'skip' },
+  ],
+}
+
+async function renderMail<P extends Record<string, unknown>>(template: Component, props: P) {
+  const [html, text] = await Promise.all([render(template, props), render(template, props, { plainText: true, htmlToTextOptions: plainText })])
+  return { html, text }
+}
+
 export function testMail() {
-  const text = 'This is a test message from Ticketer. If you can read it, email is set up correctly.'
-  const html = `<!doctype html><html><body style="margin:0;padding:32px;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
-<tr><td><h1 style="margin:0 0 16px;font-size:20px">Email works</h1>
-<p style="margin:0;line-height:1.6;color:#3f3f46">${text}</p></td></tr></table></body></html>`
-  return { text, html }
+  return renderMail(TestEmail, { appName: appName() })
 }
 
 export function passwordResetMail(link: string) {
-  const text = `Someone asked to reset your Ticketer password.\n\nOpen this link within an hour to choose a new one:\n${link}\n\nIf this wasn't you, you can ignore this email.`
-  const html = `<!doctype html><html><body style="margin:0;padding:32px;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
-<tr><td>
-<h1 style="margin:0 0 16px;font-size:20px">Reset your password</h1>
-<p style="margin:0 0 24px;line-height:1.6;color:#3f3f46">Someone asked to reset your Ticketer password. The link below works for one hour.</p>
-<a href="${link}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Choose a new password</a>
-<p style="margin:24px 0 0;font-size:13px;color:#71717a">If this wasn't you, you can ignore this email.</p>
-</td></tr></table></body></html>`
-  return { text, html }
+  return renderMail(PasswordReset, { appName: appName(), link })
 }
 
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-
 export function inviteMail(link: string, inviter: string | null, role: UserRole) {
-  const who = inviter ? `${inviter} invited you` : 'You have been invited'
-  const text = `${who} to join Ticketer as ${rolePhrase(role)}.\n\nOpen this link within ${INVITE_TTL_DAYS} days to create your account:\n${link}\n\nIf you weren't expecting this, you can ignore this email.`
-  const html = `<!doctype html><html><body style="margin:0;padding:32px;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
-<tr><td>
-<h1 style="margin:0 0 16px;font-size:20px">Join Ticketer</h1>
-<p style="margin:0 0 24px;line-height:1.6;color:#3f3f46">${escapeHtml(who)} to join as ${rolePhrase(role)}. The link below works for ${INVITE_TTL_DAYS} days.</p>
-<a href="${link}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Accept the invitation</a>
-<p style="margin:24px 0 0;font-size:13px;color:#71717a">If you weren't expecting this, you can ignore this email.</p>
-</td></tr></table></body></html>`
-  return { text, html }
+  return renderMail(Invitation, { appName: appName(), link, inviter, rolePhrase: rolePhrase(role), days: INVITE_TTL_DAYS })
 }
 
 /** A copy of an in-app notification, with a link to the item and to the setting that turns these emails off. */
 export function notificationMail(message: string, url: string, settingsUrl: string) {
-  const text = `${message}\n\nOpen it: ${url}\n\nYou get these emails because notification emails are on for your account. Turn them off: ${settingsUrl}`
-  const html = `<!doctype html><html><body style="margin:0;padding:32px;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
-<tr><td>
-<p style="margin:0 0 24px;font-size:16px;line-height:1.6">${escapeHtml(message)}</p>
-<a href="${escapeHtml(url)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Open</a>
-<p style="margin:24px 0 0;font-size:13px;color:#71717a">You get these emails because notification emails are on for your account. <a href="${escapeHtml(settingsUrl)}" style="color:#71717a">Turn them off</a>.</p>
-</td></tr></table></body></html>`
-  return { text, html }
+  return renderMail(Notification, { appName: appName(), message, link: url, settingsLink: settingsUrl })
 }

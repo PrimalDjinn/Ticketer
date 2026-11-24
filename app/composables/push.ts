@@ -24,7 +24,18 @@ export function usePush() {
     permission.value = supported.value ? Notification.permission : 'unsupported'
     if (!supported.value) return (checked.value = true)
     const reg = await navigator.serviceWorker.getRegistration('/')
-    const sub = await reg?.pushManager.getSubscription()
+    let sub = await reg?.pushManager.getSubscription()
+    if (reg && sub) {
+      // The server's key can change (it is recreated if NUXT_APP_SECRET changes). A subscription made for the old key
+      // can't receive anything, so make a new one for the current key while permission is still granted.
+      const { publicKey } = await $fetch<{ publicKey: string }>('/api/push/key').catch(() => ({ publicKey: '' }))
+      const current = sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null
+      const expected = publicKey ? toBytes(publicKey) : null
+      if (expected && current && (current.length !== expected.length || current.some((b, i) => b !== expected[i]))) {
+        await sub.unsubscribe().catch(() => {})
+        sub = Notification.permission === 'granted' ? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: expected }).catch(() => null) : null
+      }
+    }
     subscribed.value = !!sub
     // Keep the server's copy current (it may have been dropped after the push service expired it).
     if (sub) await $fetch('/api/push/subscriptions', { method: 'POST', body: sub.toJSON() }).catch(() => {})

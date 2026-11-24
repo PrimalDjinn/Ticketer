@@ -52,7 +52,7 @@ async function loadVapid(retried = false): Promise<{ publicKey: string; signingK
     if (retried) throw new Error('A new Web Push key could not be stored and read back')
     // NUXT_APP_SECRET changed: the old key is unusable. Start over with a new pair; every browser's subscription
     // belonged to the old key, so they are dropped and people turn push on again.
-    log.warn('the Web Push key could not be decrypted (NUXT_APP_SECRET changed?); creating a new one — people need to turn push on again')
+    log.warn('the Web Push key could not be decrypted (NUXT_APP_SECRET changed?); creating a new one; browsers re-subscribe the next time they open Ticketer')
     await deleteSetting('vapid')
     await db.delete(schema.pushSubscriptions)
     return loadVapid(true)

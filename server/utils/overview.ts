@@ -46,8 +46,9 @@ export function describeReplyTime(minutes: number) {
 export async function publicStatus() {
   const t = schema.tickets
   const active = and(eq(t.visibility, 'public'), inArray(t.status, ['Open', 'Pending']))
-  const [[open], latest] = await Promise.all([
+  const [[open], [urgent], latest] = await Promise.all([
     db.select({ value: count() }).from(t).where(active),
+    db.select({ value: count() }).from(t).where(and(active, inArray(t.urgency, ['Urgent', 'Emergency']))),
     db
       .select({ reference: t.reference, title: t.title, info: t.info, status: t.status, urgency: t.urgency, updatedAt: t.updatedAt, createdAt: t.createdAt })
       .from(t)
@@ -57,7 +58,7 @@ export async function publicStatus() {
   ])
   return {
     open: open?.value ?? 0,
-    urgent: latest.some((r) => r.urgency !== 'Default'),
+    urgent: (urgent?.value ?? 0) > 0,
     latest: latest.map((r) => ({
       reference: r.reference,
       title: ticketTitle(r),

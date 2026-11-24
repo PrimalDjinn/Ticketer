@@ -87,7 +87,7 @@ export async function issueInvite(
   const link = `${siteOrigin(event)}/auth/register?invite=${token}`
   let emailed = false
   try {
-    emailed = await sendMail(event, { to: input.email, subject: `${inviter.name} invited you to Ticketer`, ...inviteMail(link, inviter.name, input.role) })
+    emailed = await sendMail(event, { to: input.email, subject: `${inviter.name} invited you to ${useRuntimeConfig(event).public.appName || 'Ticketer'}`, ...(await inviteMail(link, inviter.name, input.role)) })
   } catch (error) {
     log.error('invitation mail failed', error)
   }

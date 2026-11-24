@@ -10,8 +10,10 @@ Ticketer has three areas:
 - **Help desk.** Anyone can open a ticket, with or without an account, and attach screenshots and documents. The team
   replies, writes internal notes, mentions teammates with `@`, assigns tickets and changes their status. A support chat
   lands in a shared inbox, where any teammate can answer it, take it, or turn it into a ticket.
-- **Public issues.** The team can make any ticket public. Public tickets are listed at `/issues` and can be read
-  without signing in. Internal notes stay private.
+- **Public help and status.** Visitors who aren't signed in get a help page at `/`: report an issue, start a chat,
+  see the team's usual reply time, and check the current status. The team can make any ticket public; public tickets
+  are listed on **Status and known issues** at `/issues` and can be read without signing in. Internal notes stay
+  private.
 - **Projects and tasks.** Projects have their own workflow columns. Tasks have a priority, assignee, dates, labels,
   subtasks, relations, repeat rules and custom fields, and appear on a board, a list, a calendar and a Gantt chart. A
   ticket can be handed to a project as a linked task.

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import vue from '@vitejs/plugin-vue'
 
 // Two deploy targets from one codebase:
 //   - Cloudflare (`pnpm build:cloudflare`, preset cloudflare-durable): D1 + R2 + a Durable Object for realtime.
@@ -83,6 +84,8 @@ export default defineNuxtConfig({
   nitro: {
     // Workers send mail through the EMAIL binding; keep the SMTP client out of the Worker bundle.
     alias: isCloudflare ? { nodemailer: fileURLToPath(new URL('./server/stubs/nodemailer.ts', import.meta.url)) } : {},
+    // Email templates in server/emails are Vue components (Vue Email); the server bundle needs to compile them.
+    rollupConfig: { plugins: [vue()] },
     experimental: {
       websocket: true,
       tasks: true,

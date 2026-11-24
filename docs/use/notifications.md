@@ -41,7 +41,11 @@ How push notifications behave:
 - Each one shows the notification's text. Selecting it opens the page it's about, in an existing Ticketer tab if there
   is one.
 - Nothing pops up while a Ticketer tab is in front of you; the app shows the notification instead.
+- A newer notification about the same page, such as another reply on the same ticket, replaces the older one on your
+  device.
 - If your device is offline, the push service keeps the notification for up to a day.
+- If Ticketer's push key changes, for example after the admin changes `NUXT_APP_SECRET`, your browser subscribes again
+  by itself the next time you open Ticketer, as long as notifications are still allowed.
 
 To check that push works, select **Send a test** on the **Account** page. The test appears only when no Ticketer tab is
 in front of you, so switch to another tab or app.

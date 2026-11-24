@@ -79,7 +79,7 @@ async function deliverAway(event: H3Event, rows: (typeof schema.notifications.$i
       if (recent) continue
     }
     const url = `${origin}${row.link ?? '/'}`
-    const sent = await sendMail(event, { to: person.email, subject: row.message.slice(0, 120), ...notificationMail(row.message, url, `${origin}/account`) }).catch(() => false)
+    const sent = await sendMail(event, { to: person.email, subject: row.message.slice(0, 120), ...(await notificationMail(row.message, url, `${origin}/account`)) }).catch(() => false)
     if (sent) await db.update(schema.notifications).set({ emailedAt: new Date() }).where(eq(schema.notifications.id, row.id))
   }
 }

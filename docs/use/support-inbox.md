@@ -5,9 +5,23 @@ the shared inbox, assigns them, writes internal notes, closes them, and turns th
 
 ## How customers start a chat
 
-People outside the team, including visitors without an account, select **Chat with support**: the chat button in the
-corner of the sign-in and public pages, or in the top bar of the app. They can add a **Subject** and send their first
-message. A visitor gets a guest session with the first message and keeps the conversation if they register later.
+People outside the team, including visitors without an account, can start a chat from:
+
+- **Start a chat** on the public help page at `/`, or under **Need help without signing in?** on the sign-in page;
+- the chat button in the corner of the public and sign-in pages, labelled **Chat with support**;
+- the chat button in the top bar of the app.
+
+They can add a **Subject** and send their first message. A visitor gets a guest session with the first message and
+keeps the conversation if they register later.
+
+## Reply time shown to customers
+
+The public help page and the chat panel tell customers how quickly the team usually replies, for example "Usually
+replies in about 20 minutes". Ticketer measures it as the median time from the start of a support conversation to the
+team's first reply that isn't an internal note, over conversations started in the last 30 days that got a reply.
+
+With fewer than 5 such replies, Ticketer doesn't show a time. The help page then says "The team replies here as soon as
+they can", and the chat panel says "The team replies as soon as they can". The figure can be up to a minute old.
 
 Customers see their own conversations only. They see the team's replies, marked **Team**, but never internal notes.
 

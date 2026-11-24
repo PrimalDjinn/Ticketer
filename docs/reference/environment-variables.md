@@ -15,8 +15,10 @@ the environment variable wins and the field is locked there.
 
 ::: warning
 Changing `NUXT_APP_SECRET` signs everyone out and makes saved secrets unreadable: the SMTP password, the single sign-on
-client secret, integration signing secrets and the Web Push key. Re-enter them and rotate integration credentials
-after a change, and see [Push notifications stopped working for everyone](/reference/troubleshooting#push-notifications-stopped-working-for-everyone).
+client secret and integration signing secrets. Re-enter them and rotate integration credentials after a change.
+Ticketer replaces its Web Push key by itself, and each browser subscribes again the next time its person opens
+Ticketer; see
+[Push notifications stopped working for everyone](/reference/troubleshooting#push-notifications-stopped-working-for-everyone).
 :::
 
 ## First admin

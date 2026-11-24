@@ -7,7 +7,8 @@ assignment and status.
 
 Anyone can open a ticket, with or without an account.
 
-1. Select **New ticket** in the sidebar, or open `/tickets/new`.
+1. Select **New ticket** in the sidebar, or open `/tickets/new`. Visitors who aren't signed in can select **Report an
+   issue** on the public help page at `/`.
 2. Enter a **Title** (up to 140 characters) and a **Description** (up to 10,000 characters).
 3. Optional: add **Screenshots and documents**, up to 10 files of 32 MB each.
 4. Choose the **Urgency**:
