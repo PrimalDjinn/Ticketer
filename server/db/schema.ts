@@ -31,6 +31,8 @@ export const users = sqliteTable('users', {
   companyId: integer('company_id').references(() => companies.id, { onDelete: 'set null' }),
   /** Email a copy of notifications. Null: the default for the role (on for people outside the team, off for the team). */
   emailNotifications: integer('email_notifications', { mode: 'boolean' }),
+  /** Remind me about tasks assigned to me (or that I follow, when unassigned) the day before and on the day they're due. */
+  taskReminders: integer('task_reminders', { mode: 'boolean' }).notNull().default(true),
   createdAt: createdAt(),
 })
 
@@ -365,6 +367,8 @@ export const tasks = sqliteTable(
     repeatInterval: integer('repeat_interval'),
     /** The task this one was repeated from, so an occurrence is only spawned once. */
     repeatedFromId: integer('repeated_from_id'),
+    /** The due date a reminder was last sent for; a new due date arms a new reminder. */
+    dueRemindedFor: text('due_reminded_for'),
     createdAt: createdAt(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
     completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
@@ -376,6 +380,21 @@ export const tasks = sqliteTable(
     index('tasks_parent_idx').on(t.parentId),
     index('tasks_ticket_idx').on(t.ticketId),
   ],
+)
+
+/** People following a task: its creator, assignees, commenters, and anyone who pressed Follow. */
+export const taskWatchers = sqliteTable(
+  'task_watchers',
+  {
+    taskId: integer('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.userId] }), index('task_watchers_user_idx').on(t.userId)],
 )
 
 export const labels = sqliteTable('labels', {

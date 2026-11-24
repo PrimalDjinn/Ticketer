@@ -47,6 +47,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Public address (NUXT_SITE_URL), e.g. https://tickets.example.com. Used for links in emails sent by scheduled jobs
+    // such as due-date reminders, which have no request to read it from. Unset = the address the team last used.
+    siteUrl: '',
     // Initial admin, created on first start when no account has this email (NUXT_ADMIN_EMAIL, NUXT_ADMIN_PASSWORD,
     // NUXT_ADMIN_NAME). An existing account is never modified. See also `pnpm admin`.
     admin: {
@@ -89,6 +92,11 @@ export default defineNuxtConfig({
     experimental: {
       websocket: true,
       tasks: true,
+    },
+    // Hourly; the job itself only acts at the hour chosen in Settings → Reminders. On Cloudflare the same cron must be
+    // listed under `triggers.crons` in wrangler.jsonc.
+    scheduledTasks: {
+      '0 * * * *': ['reminders:due'],
     },
     // Migrations ship with the server so the Node build can apply them to the volume on boot.
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations/sqlite' }],

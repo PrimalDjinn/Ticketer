@@ -28,6 +28,8 @@ const icons: Record<string, string> = {
   comment: 'i-lucide-message-square',
   ticket: 'i-lucide-ticket',
   message: 'i-lucide-message-circle',
+  task: 'i-lucide-square-check-big',
+  reminder: 'i-lucide-alarm-clock',
 }
 </script>
 

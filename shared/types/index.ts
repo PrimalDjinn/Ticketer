@@ -325,6 +325,13 @@ export interface TaskDetailDTO extends TaskDTO {
   parent: { id: number; ref: string; title: string } | null
   relations: TaskRelationDTO[]
   activity: TaskActivityDTO[]
+  /** People notified about comments, status changes and reassignment. */
+  followers: TaskFollowerDTO[]
+}
+
+export interface TaskFollowerDTO {
+  id: string
+  name: string
 }
 
 /** Board payload: everything needed to render a project without further requests. */
@@ -341,6 +348,7 @@ export type TaskRealtime =
   | { type: 'task.deleted'; body: { id: number; projectId: number } }
   | { type: 'task.comment.created'; body: CommentDTO & { taskId: number } }
   | { type: 'task.comment.deleted'; body: { id: number; taskId: number } }
+  | { type: 'task.followers'; body: { taskId: number; followers: TaskFollowerDTO[] } }
   | { type: 'project.updated'; body: ProjectDTO }
   | { type: 'project.deleted'; body: { id: number } }
   | { type: 'labels.updated'; body: LabelDTO[] }

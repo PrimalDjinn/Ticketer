@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
     return
   }
   const fresh = toPublicUser(row)
+  // Remember the address the team uses, for links in mail sent by scheduled jobs. Only trusted people count, so a
+  // forged Host header from a stranger can't redirect those links.
+  if (isStaff(fresh)) rememberSiteOrigin(event)
   const s = session.user
   if (fresh.role !== s.role || fresh.name !== s.name || fresh.isGuest !== s.isGuest || fresh.isInternal !== s.isInternal || fresh.isAdmin !== s.isAdmin) {
     await replaceUserSession(event, { user: fresh, loggedInAt: session.loggedInAt })

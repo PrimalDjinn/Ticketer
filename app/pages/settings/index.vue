@@ -3,10 +3,11 @@
 definePageMeta({ middleware: ['auth', 'admin'] })
 
 type Mail = { transport: 'cloudflare' | 'smtp' | 'none'; from: { value: string } }
-const [{ data: mail }, { data: providers }, { data: settings }] = await Promise.all([
+const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }] = await Promise.all([
   useFetch<Mail>('/api/settings/mail'),
   useFetch<{ password: boolean; oidc: { name: string } | null }>('/api/auth/providers'),
   useFetch<{ signup: SignupMode }>('/api/settings'),
+  useFetch<{ enabled: boolean; hour: number; timeZone: string }>('/api/settings/reminders'),
 ])
 
 const signupLabel: Record<SignupMode, string> = {
@@ -43,6 +44,17 @@ const rows = computed(() => [
     to: '/users',
     ok: true,
     status: settings.value ? signupLabel[settings.value.signup] : 'Unknown',
+  },
+  {
+    icon: 'i-lucide-alarm-clock',
+    title: 'Due-date reminders',
+    to: '/settings/reminders',
+    ok: true,
+    status: !reminders.value
+      ? 'Unknown'
+      : reminders.value.enabled
+        ? `Every day at ${String(reminders.value.hour).padStart(2, '0')}:00 (${reminders.value.timeZone})`
+        : 'Off',
   },
   {
     icon: 'i-lucide-plug',

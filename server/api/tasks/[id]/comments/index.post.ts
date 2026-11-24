@@ -37,8 +37,8 @@ export default defineEventHandler(async (event) => {
   const people = new Set((await members()).map((m) => m.id))
   const mentioned = input.mentions.filter((uid) => people.has(uid) && uid !== user.id)
   await notify(event, mentioned, { type: 'mention', message: `${user.name} mentioned you on ${ref}`, link })
-  if (task.assigneeId && task.assigneeId !== user.id && !mentioned.includes(task.assigneeId)) {
-    await notify(event, task.assigneeId, { type: 'comment', message: `${user.name} commented on ${ref}`, link })
-  }
+  // Followers (the assignee and creator among them) hear about the comment; people just mentioned already did.
+  await notifyTaskFollowers(event, id, user.id, { type: 'comment', message: `${user.name} commented on ${ref}: ${task.title}`, link }, mentioned)
+  await followTask(event, id, [user.id])
   return dto
 })
