@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NavigationMenuItem, DropdownMenuItem } from '@nuxt/ui'
 
-const { user, clear } = useUserSession()
+const { clear } = useUserSession()
+const { user, internal, staff: canEdit, admin } = useAccess()
 const { items: notifications } = useNotificationFeed()
 const notificationsOpen = useState('notifications-open', () => false)
 const colorMode = useColorMode()
@@ -9,24 +10,47 @@ const { active: projects, refresh: refreshProjects } = useProjects()
 useProjectsFeed()
 await refreshProjects()
 const newProjectOpen = ref(false)
-const canEdit = computed(() => user.value?.role === 'admin' || user.value?.role === 'member')
+// Open/unread support conversations for the sidebar badge (team only; kept live by the composable).
+const { stats: inbox } = useSupportInbox()
 
-const workLinks = computed<NavigationMenuItem[]>(() => [
-  { label: 'Home', icon: 'i-lucide-house', to: '/', exact: true },
-  {
-    label: 'Inbox',
-    icon: 'i-lucide-inbox',
-    badge: notifications.value.length ? String(notifications.value.length) : undefined,
-    onSelect: () => (notificationsOpen.value = true),
-  },
-  { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' },
-])
+const notificationsLink = computed<NavigationMenuItem>(() => ({
+  label: 'Notifications',
+  icon: 'i-lucide-bell',
+  badge: notifications.value.length ? String(notifications.value.length) : undefined,
+  onSelect: () => (notificationsOpen.value = true),
+}))
 
-const supportLinks = computed<NavigationMenuItem[]>(() => [
-  { label: user.value?.isAdmin ? 'Tickets' : 'My tickets', icon: 'i-lucide-life-buoy', to: '/tickets', exact: true },
-  { label: 'New ticket', icon: 'i-lucide-square-pen', to: '/tickets/new' },
-  ...(user.value?.isAdmin ? [{ label: 'Members', icon: 'i-lucide-users', to: '/users' }] : []),
-])
+const workLinks = computed<NavigationMenuItem[]>(() =>
+  internal.value
+    ? [{ label: 'Home', icon: 'i-lucide-house', to: '/', exact: true }, notificationsLink.value, { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' }]
+    : [{ label: 'Home', icon: 'i-lucide-house', to: '/', exact: true }, notificationsLink.value],
+)
+
+const supportLinks = computed<NavigationMenuItem[]>(() =>
+  internal.value
+    ? [
+        {
+          label: 'Conversations',
+          icon: 'i-lucide-messages-square',
+          to: '/conversations',
+          badge: inbox.value.unread ? { label: String(inbox.value.unread), color: 'primary' as const, variant: 'solid' as const } : inbox.value.open ? String(inbox.value.open) : undefined,
+        },
+        { label: 'Tickets', icon: 'i-lucide-life-buoy', to: '/tickets', exact: true },
+        { label: 'Public issues', icon: 'i-lucide-globe', to: '/issues' },
+        { label: 'New ticket', icon: 'i-lucide-square-pen', to: '/tickets/new' },
+        ...(admin.value
+          ? [
+              { label: 'Members', icon: 'i-lucide-users', to: '/users' },
+              { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
+            ]
+          : []),
+      ]
+    : [
+        { label: 'My tickets', icon: 'i-lucide-life-buoy', to: '/tickets', exact: true },
+        { label: 'Public issues', icon: 'i-lucide-globe', to: '/issues' },
+        { label: 'New ticket', icon: 'i-lucide-square-pen', to: '/tickets/new' },
+      ],
+)
 
 const projectLinks = computed<NavigationMenuItem[]>(() =>
   projects.value.map((p) => ({
@@ -43,18 +67,36 @@ const searchGroups = computed(() => [
   {
     id: 'go',
     label: 'Go to',
-    items: [
-      { label: 'Home', icon: 'i-lucide-house', to: '/' },
-      { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' },
-      { label: 'Tickets', icon: 'i-lucide-life-buoy', to: '/tickets' },
-      { label: 'All projects', icon: 'i-lucide-folder-kanban', to: '/projects' },
-    ],
+    items: internal.value
+      ? [
+          { label: 'Home', icon: 'i-lucide-house', to: '/' },
+          { label: 'My tasks', icon: 'i-lucide-circle-check-big', to: '/my-tasks' },
+          { label: 'Conversations', icon: 'i-lucide-messages-square', to: '/conversations' },
+          { label: 'Tickets', icon: 'i-lucide-life-buoy', to: '/tickets' },
+          { label: 'Public issues', icon: 'i-lucide-globe', to: '/issues' },
+          { label: 'All projects', icon: 'i-lucide-folder-kanban', to: '/projects' },
+          ...(admin.value
+            ? [
+                { label: 'Members', icon: 'i-lucide-users', to: '/users' },
+                { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
+              ]
+            : []),
+        ]
+      : [
+          { label: 'Home', icon: 'i-lucide-house', to: '/' },
+          { label: 'My tickets', icon: 'i-lucide-life-buoy', to: '/tickets' },
+          { label: 'Public issues', icon: 'i-lucide-globe', to: '/issues' },
+        ],
   },
-  {
-    id: 'projects',
-    label: 'Projects',
-    items: projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder', to: `/projects/${p.key}` })),
-  },
+  ...(internal.value
+    ? [
+        {
+          id: 'projects',
+          label: 'Projects',
+          items: projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder', to: `/projects/${p.key}` })),
+        },
+      ]
+    : []),
   {
     id: 'actions',
     label: 'Actions',
@@ -66,7 +108,7 @@ const searchGroups = computed(() => [
 ])
 
 const accountItems = computed<DropdownMenuItem[][]>(() => [
-  [{ type: 'label', label: user.value?.email ?? '' }],
+  [{ type: 'label', label: user.value?.email ?? '' }, { type: 'label', label: user.value ? roleMeta[user.value.role].label : '', icon: user.value ? roleMeta[user.value.role].icon : undefined }],
   [
     {
       label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
@@ -101,6 +143,7 @@ async function signOut() {
         <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
         <UNavigationMenu :collapsed="collapsed" :items="workLinks" orientation="vertical" tooltip />
 
+        <template v-if="internal">
         <div class="mt-2 flex items-center justify-between px-2.5" :class="collapsed && 'justify-center'">
           <NuxtLink v-if="!collapsed" to="/projects" class="text-xs font-medium text-dimmed hover:text-muted">Projects</NuxtLink>
           <UTooltip v-if="canEdit" text="New project">
@@ -115,6 +158,7 @@ async function signOut() {
           </template>
         </UNavigationMenu>
         <p v-if="!projects.length && !collapsed" class="px-2.5 text-xs text-dimmed">No projects yet</p>
+        </template>
 
         <p v-if="!collapsed" class="mt-2 px-2.5 text-xs font-medium text-dimmed">Support</p>
         <UNavigationMenu :collapsed="collapsed" :items="supportLinks" orientation="vertical" tooltip />
@@ -137,7 +181,7 @@ async function signOut() {
     </UDashboardSidebar>
 
     <slot />
-    <USlideover v-model:open="notificationsOpen" title="Notifications" description="Mentions, replies and ticket updates">
+    <USlideover v-model:open="notificationsOpen" title="Notifications" :description="internal ? 'Mentions, replies, assignments and ticket updates' : 'Replies and updates on your tickets and conversations'">
       <template #body>
         <NotificationList @navigate="notificationsOpen = false" />
       </template>

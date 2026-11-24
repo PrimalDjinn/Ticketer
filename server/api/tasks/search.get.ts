@@ -9,7 +9,7 @@ const query = z.object({
 
 /** Task picker for relations: matches "KEY-12", a number, or words in the title, across projects. */
 export default defineEventHandler(async (event) => {
-  await requireMember(event)
+  await requireInternal(event)
   const { q, exclude } = await getValidatedQuery(event, query.parse)
   const ref = /^([A-Za-z][A-Za-z0-9]{1,9})-(\d+)$/.exec(q)
   const term = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`

@@ -12,16 +12,33 @@ const { user: me } = useUserSession()
 const toast = useToast()
 const { data: users, refresh } = await useFetch<Row[]>('/api/users', { default: () => [], deep: true })
 const search = ref('')
+const group = ref<'all' | 'team' | 'external'>('all')
+const counts = computed(() => ({
+  all: users.value.length,
+  team: users.value.filter((u) => roleMeta[u.role].internal).length,
+  external: users.value.filter((u) => !roleMeta[u.role].internal).length,
+}))
+const groupTabs = computed(() => [
+  { label: 'Everyone', value: 'all', badge: String(counts.value.all) },
+  { label: 'Team', value: 'team', badge: String(counts.value.team) },
+  { label: 'External', value: 'external', badge: String(counts.value.external) },
+])
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return q ? users.value.filter((u) => u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)) : users.value
+  return users.value.filter(
+    (u) =>
+      (group.value === 'all' || (group.value === 'team') === roleMeta[u.role].internal) &&
+      (!q || u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)),
+  )
 })
 
 const roleOptions = [
-  { value: 'admin', label: 'Admin', description: 'Manages people, projects and support' },
-  { value: 'member', label: 'Member', description: 'Creates and updates tasks' },
-  { value: 'viewer', label: 'Viewer', description: 'Read-only' },
-] satisfies { value: UserRole; label: string; description: string }[]
+  { type: 'label' as const, label: 'Team' },
+  ...(['admin', 'member', 'viewer'] as const).map((value) => ({ value, label: roleMeta[value].label, description: roleMeta[value].description, icon: roleMeta[value].icon })),
+  { type: 'separator' as const },
+  { type: 'label' as const, label: 'Outside the team' },
+  { value: 'external' as const, label: roleMeta.external.label, description: roleMeta.external.description, icon: roleMeta.external.icon },
+]
 
 async function setRole(row: Row, role: UserRole) {
   const previous = row.role
@@ -29,7 +46,8 @@ async function setRole(row: Row, role: UserRole) {
   try {
     await $fetch(`/api/users/${row.id}`, { method: 'PATCH', body: { role } })
     row.isAdmin = role === 'admin'
-    toast.add({ title: `${row.name} is now ${role === 'admin' ? 'an admin' : `a ${role}`}`, color: 'success' })
+    row.isInternal = roleMeta[role].internal
+    toast.add({ title: `${row.name} is now ${rolePhrase(role)}`, color: 'success' })
   } catch (e) {
     row.role = previous
     toast.add({ title: errorMessage(e), color: 'error' })
@@ -46,8 +64,9 @@ const busyInvite = ref<number | null>(null)
 
 const signupOptions = [
   { value: 'invite', label: 'Invitation only', description: 'People join through an invitation link' },
-  { value: 'viewer', label: 'Anyone, as viewer', description: 'Open sign-up with read-only access' },
-  { value: 'member', label: 'Anyone, as member', description: 'Open sign-up; new people can edit tasks' },
+  { value: 'external', label: 'Anyone, as external', description: 'Customer portal: their own tickets, public issues and support chat' },
+  { value: 'viewer', label: 'Anyone, as viewer', description: 'Joins the team with read-only access' },
+  { value: 'member', label: 'Anyone, as member', description: 'Joins the team and can edit tasks and tickets' },
 ] satisfies { value: SignupMode; label: string; description: string }[]
 const signupSchema = z.enum(SIGNUP_MODES)
 
@@ -58,7 +77,7 @@ async function setSignup(value: unknown) {
   settings.value.signup = signup
   try {
     await $fetch('/api/settings', { method: 'PATCH', body: { signup } })
-    toast.add({ title: signup === 'invite' ? 'Sign-up is now by invitation only' : 'Anyone can now sign up', color: 'success' })
+    toast.add({ title: signup === 'invite' ? 'Sign-up is now by invitation only' : `Anyone can now sign up as ${rolePhrase(signup)}`, color: 'success' })
   } catch (e) {
     settings.value.signup = previous
     toast.add({ title: errorMessage(e), color: 'error' })
@@ -101,6 +120,7 @@ const columns: TableColumn<Row>[] = [
   { accessorKey: 'createdAt', header: 'Joined' },
   { accessorKey: 'role', header: 'Role' },
 ]
+const signupWarning = computed(() => settings.value && (settings.value.signup === 'member' || settings.value.signup === 'viewer'))
 </script>
 
 <template>
@@ -110,21 +130,30 @@ const columns: TableColumn<Row>[] = [
     </template>
     <template #body>
       <div class="flex flex-wrap items-center gap-3">
-        <UInput v-model="search" icon="i-lucide-search" placeholder="Search people…" class="w-full sm:w-72" />
-        <span class="text-sm text-muted">{{ filtered.length }} people</span>
-        <div class="ml-auto flex items-center gap-2">
+        <UInput v-model="search" icon="i-lucide-search" placeholder="Search people…" class="w-full sm:w-64" />
+        <UTabs v-model="group" :items="groupTabs" :content="false" size="sm" variant="pill" class="w-full sm:w-auto" />
+        <div class="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
           <USelect
             v-if="settings"
             :model-value="settings.signup"
             :items="signupOptions"
             icon="i-lucide-door-open"
             aria-label="Who can sign up"
-            class="w-48"
+            class="min-w-0 flex-1 sm:w-52 sm:flex-none"
+            :ui="{ content: 'min-w-80' }"
             @update:model-value="setSignup"
           />
           <UButton icon="i-lucide-user-plus" label="Invite" @click="openInvite" />
         </div>
       </div>
+      <UAlert
+        v-if="signupWarning"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        title="Anyone who finds the sign-up page joins your team"
+        :description="`New accounts become ${settings?.signup === 'member' ? 'members who can edit projects, tasks and tickets' : 'viewers who can read every project and ticket'}. Choose “Anyone, as external” for a customer portal.`"
+      />
 
       <section v-if="invites.length" aria-labelledby="pending-invites" class="rounded-lg border border-default">
         <h2 id="pending-invites" class="border-b border-default px-4 py-2.5 text-sm font-medium text-highlighted">
@@ -136,7 +165,7 @@ const columns: TableColumn<Row>[] = [
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium text-highlighted">{{ invite.email }}</p>
               <p class="text-xs text-muted">
-                <span class="capitalize">{{ invite.role }}</span>
+                <span>{{ roleMeta[invite.role].label }}</span>
                 <template v-if="invite.invitedBy"> · invited by {{ invite.invitedBy }}</template>
                 ·
                 <span v-if="invite.expired" class="text-warning">expired</span>
@@ -162,9 +191,12 @@ const columns: TableColumn<Row>[] = [
         <template #name-cell="{ row }">
           <div class="flex items-center gap-3">
             <UAvatar :text="initials(row.original.name)" size="sm" />
-            <div>
-              <p class="font-medium text-highlighted">{{ row.original.name }}</p>
-              <p class="text-xs text-muted">{{ row.original.email }}</p>
+            <div class="min-w-0">
+              <p class="flex items-center gap-1.5 font-medium text-highlighted">
+                {{ row.original.name }}
+                <UBadge v-if="!roleMeta[row.original.role].internal" label="External" color="neutral" variant="subtle" size="sm" icon="i-lucide-globe" />
+              </p>
+              <p class="truncate text-xs text-muted">{{ row.original.email }}</p>
             </div>
           </div>
         </template>
@@ -177,7 +209,8 @@ const columns: TableColumn<Row>[] = [
             :items="roleOptions"
             :disabled="row.original.id === me?.id"
             :aria-label="`Role for ${row.original.name}`"
-            class="w-32"
+            class="w-36"
+            :ui="{ content: 'min-w-72' }"
             @update:model-value="(v) => setRole(row.original, roleSchema.parse(v))"
           />
         </template>

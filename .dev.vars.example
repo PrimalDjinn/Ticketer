@@ -1,0 +1,4 @@
+# Secrets for the Cloudflare Worker. The "Deploy to Cloudflare" button asks for these.
+NUXT_APP_SECRET=
+NUXT_ADMIN_EMAIL=
+NUXT_ADMIN_PASSWORD=

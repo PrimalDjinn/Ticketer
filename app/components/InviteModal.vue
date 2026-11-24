@@ -17,11 +17,13 @@ const schema = z.object({
 })
 type Schema = z.output<typeof schema>
 
-const roleOptions = [
-  { value: 'member', label: 'Member', description: 'Creates and updates tasks' },
-  { value: 'viewer', label: 'Viewer', description: 'Read-only' },
-  { value: 'admin', label: 'Admin', description: 'Manages people, projects and support' },
-] satisfies { value: UserRole; label: string; description: string }[]
+/** Team roles; "Outside the team" is picked with the toggle above the select. */
+const teamRoles = (['member', 'viewer', 'admin'] as const).map((value) => ({ value, label: roleMeta[value].label, description: roleMeta[value].description, icon: roleMeta[value].icon }))
+
+function pickSide(side: 'team' | 'external') {
+  if (side === 'external') state.role = 'external'
+  else if (state.role === 'external') state.role = 'member'
+}
 
 const state = reactive<Partial<Schema>>({ email: '', role: 'member' })
 const loading = ref(false)
@@ -75,7 +77,7 @@ function inviteAnother() {
           :title="result.emailed ? `Emailed to ${result.invite.email}` : `Email not sent to ${result.invite.email}`"
           :description="result.emailed ? 'You can also share the link yourself.' : 'Mail is not set up for this site. Send them the link below yourself.'"
         />
-        <UFormField label="Invitation link" :help="`Only shown now. Anyone with the link can join as ${result.invite.role}.`">
+        <UFormField label="Invitation link" :help="`Only shown now. Anyone with the link can join as ${rolePhrase(result.invite.role)}.`">
           <div class="flex gap-2">
             <UInput :model-value="result.link" readonly class="w-full font-mono text-xs" aria-label="Invitation link" @focus="($event.target as HTMLInputElement).select()" />
             <UButton :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'" :label="copied ? 'Copied' : 'Copy'" color="neutral" variant="outline" @click="copy" />
@@ -86,8 +88,23 @@ function inviteAnother() {
         <UFormField label="Email" name="email">
           <UInput v-model="state.email" type="email" placeholder="name@company.com" class="w-full" autofocus />
         </UFormField>
-        <UFormField label="Role" name="role">
-          <USelect v-model="state.role" :items="roleOptions" class="w-full" />
+        <UFormField label="Role" name="role" :help="state.role ? roleMeta[state.role].description : undefined">
+          <div class="grid grid-cols-2 gap-1 rounded-lg bg-elevated p-1" role="radiogroup" aria-label="Team or outside">
+            <button
+              v-for="side in (['team', 'external'] as const)"
+              :key="side"
+              type="button"
+              role="radio"
+              :aria-checked="side === 'external' ? state.role === 'external' : state.role !== 'external'"
+              class="rounded-md px-3 py-1.5 text-sm font-medium transition"
+              :class="(side === 'external') === (state.role === 'external') ? 'bg-default text-highlighted shadow-xs' : 'text-muted hover:text-default'"
+              @click="pickSide(side)"
+            >
+              <UIcon :name="side === 'external' ? 'i-lucide-globe' : 'i-lucide-users'" class="mr-1 size-4 align-[-3px]" />
+              {{ side === 'external' ? 'Outside the team' : 'Team' }}
+            </button>
+          </div>
+          <USelect v-if="state.role !== 'external'" v-model="state.role" :items="teamRoles" class="mt-2 w-full" aria-label="Team role" />
         </UFormField>
       </UForm>
     </template>

@@ -4,7 +4,7 @@ import { db, schema } from 'hub:db'
 import { inArray } from 'drizzle-orm'
 import { ulid } from 'ulid'
 
-type Owner = { ticketId: number } | { commentId: number } | { messageId: number } | { taskId: number } | { taskCommentId: number }
+type Owner = { ticketId: number } | { commentId: number } | { messageId: number } | { taskId: number } | { taskCommentId: number } | { conversationMessageId: number }
 
 /** Reads every `File` sent under `field` in a multipart body, plus the plain text fields. */
 export async function readMultipart(event: H3Event, field = 'files') {
@@ -64,7 +64,7 @@ export function toAttachmentDTO(a: typeof schema.attachments.$inferSelect): Atta
   }
 }
 
-export async function attachmentsFor(column: 'ticketId' | 'commentId' | 'messageId' | 'taskId' | 'taskCommentId', ids: number[]) {
+export async function attachmentsFor(column: 'ticketId' | 'commentId' | 'messageId' | 'taskId' | 'taskCommentId' | 'conversationMessageId', ids: number[]) {
   const map = new Map<number, AttachmentDTO[]>()
   if (!ids.length) return map
   const rows = await db.select().from(schema.attachments).where(inArray(schema.attachments[column], ids))

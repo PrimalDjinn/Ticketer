@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'internal'] })
 
 const paramsSchema = z.object({
   key: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9]{1,9}$/),

@@ -5,7 +5,7 @@ import { db, schema } from 'hub:db'
 const params = z.object({ id: z.coerce.number().int().positive(), commentId: z.coerce.number().int().positive() })
 
 export default defineEventHandler(async (event) => {
-  const user = await requireMember(event)
+  const user = await requireInternal(event)
   const { id, commentId } = await getValidatedRouterParams(event, params.parse)
   const comment = await db.query.taskComments.findFirst({ where: eq(schema.taskComments.id, commentId) })
   if (!comment || comment.taskId !== id) throw createError({ status: 404, message: 'Comment not found' })

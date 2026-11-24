@@ -9,8 +9,9 @@ export function toPublicUser(user: typeof schema.users.$inferSelect): PublicUser
     name: displayName(user),
     email: user.email,
     role: user.role,
-    isAdmin: user.role === 'admin',
+    isAdmin: user.role === 'admin' && !user.isGuest,
     isGuest: user.isGuest,
+    isInternal: isInternal(user),
   }
 }
 
@@ -29,7 +30,7 @@ export async function requireUser(event: H3Event) {
   return user
 }
 
-/** A registered (non-guest) user. */
+/** A registered (non-guest) user, internal or external. */
 export async function requireMember(event: H3Event) {
   const user = await requireUser(event)
   if (user.isGuest) throw createError({ status: 401, message: 'Please sign in to continue' })
@@ -48,12 +49,31 @@ export async function requireAdmin(event: H3Event) {
   return user
 }
 
-/** Anyone who may change tasks and projects: admins and members, not viewers. */
-export async function requireEditor(event: H3Event) {
+/**
+ * Someone on the team (admin, member or viewer): projects, tasks, all tickets and the support inbox. People outside
+ * the team get a 404 so internal resources cannot be probed.
+ */
+export async function requireInternal(event: H3Event) {
   const user = await requireMember(event)
   const role = await currentRole(user.id)
-  if (role !== 'admin' && role !== 'member') throw createError({ status: 403, message: 'Viewers cannot make changes' })
-  return { ...user, role }
+  if (!role || !isInternal({ role })) throw createError({ status: 404, message: 'Not found' })
+  return { ...user, role, isInternal: true }
+}
+
+/** Anyone who may change tasks, projects, tickets and support conversations: admins and members, not viewers. */
+export async function requireEditor(event: H3Event) {
+  const user = await requireInternal(event)
+  if (!isStaff(user)) throw createError({ status: 403, message: 'Viewers cannot make changes' })
+  return user
+}
+
+/** Same people as `requireEditor`; reads better in support (ticket and conversation) handlers. */
+export const requireStaff = requireEditor
+
+/** The current role from the database (not the session copy) applied to a session user. */
+export async function withFreshRole<T extends { id: string; role: UserRole; isGuest: boolean }>(user: T) {
+  const role = (await currentRole(user.id)) ?? user.role
+  return { ...user, role, isAdmin: role === 'admin' && !user.isGuest, isInternal: isInternal({ role, isGuest: user.isGuest }) }
 }
 
 /**
@@ -66,7 +86,7 @@ export async function ensureUser(event: H3Event) {
     const exists = await db.query.users.findFirst({ where: eq(schema.users.id, session.user.id), columns: { id: true } })
     if (exists) return session.user
   }
-  const [guest] = await db.insert(schema.users).values({ id: ulid(), isGuest: true }).returning()
+  const [guest] = await db.insert(schema.users).values({ id: ulid(), isGuest: true, role: 'external' }).returning()
   await startSession(event, guest!)
   return toPublicUser(guest!)
 }

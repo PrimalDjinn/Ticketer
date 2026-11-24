@@ -2,11 +2,11 @@ import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 
 /**
- * The signed-in user's conversations, newest first, with the latest messages of each. Every admin is listed even
- * without history so anyone (guests included) can start a support chat.
+ * Direct messages between people on the team, newest first, with the latest messages of each. Every teammate is
+ * listed even without history so anyone can start a conversation. People outside the team use support conversations.
  */
 export default defineEventHandler(async (event): Promise<ChatDTO[]> => {
-  const user = await requireUser(event)
+  const user = await requireInternal(event)
   const c = schema.chats
   const rows = await db
     .select()
@@ -15,16 +15,21 @@ export default defineEventHandler(async (event): Promise<ChatDTO[]> => {
     .orderBy(desc(c.lastMessageAt))
 
   const partnerIds = rows.map((r) => otherParty(r, user.id))
-  const admins = await db.select().from(schema.users).where(and(eq(schema.users.role, 'admin'), ne(schema.users.id, user.id)))
-  const partners = new Map(
-    (partnerIds.length ? await db.select().from(schema.users).where(inArray(schema.users.id, partnerIds)) : []).map((u) => [u.id, u]),
-  )
+  const u = schema.users
+  const teammates = await db
+    .select()
+    .from(u)
+    .where(and(eq(u.isGuest, false), inArray(u.role, [...INTERNAL_ROLES]), ne(u.id, user.id)))
+    .orderBy(asc(u.name))
+  // Only chats with people still on the team (old support chats with outsiders moved to conversations).
+  const partners = new Map(teammates.filter((t) => partnerIds.includes(t.id)).map((t) => [t.id, t]))
+  const chatRows = rows.filter((r) => partners.has(otherParty(r, user.id)))
 
-  const recent = rows.length
+  const recent = chatRows.length
     ? await db
         .select()
         .from(schema.messages)
-        .where(inArray(schema.messages.chatId, rows.map((r) => r.id)))
+        .where(inArray(schema.messages.chatId, chatRows.map((r) => r.id)))
         .orderBy(asc(schema.messages.createdAt))
     : []
   // Keep the payload small: the last 50 messages per chat; older ones load on demand.
@@ -39,14 +44,14 @@ export default defineEventHandler(async (event): Promise<ChatDTO[]> => {
   const dtoByChat = new Map<string, MessageDTO[]>()
   for (const d of dtos) dtoByChat.set(d.chatId, [...(dtoByChat.get(d.chatId) ?? []), d])
 
-  const result: ChatDTO[] = rows.flatMap((r) => {
+  const result: ChatDTO[] = chatRows.flatMap((r) => {
     const partner = partners.get(otherParty(r, user.id))
     if (!partner) return []
     return [{ id: r.id, with: toPublicUser(partner), messages: dtoByChat.get(r.id) ?? [], lastMessageAt: r.lastMessageAt }]
   })
-  for (const admin of admins) {
-    if (!partners.has(admin.id)) {
-      result.push({ id: chatIdFor(user.id, admin.id), with: toPublicUser(admin), messages: [], lastMessageAt: null })
+  for (const mate of teammates) {
+    if (!partners.has(mate.id)) {
+      result.push({ id: chatIdFor(user.id, mate.id), with: toPublicUser(mate), messages: [], lastMessageAt: null })
     }
   }
   return result

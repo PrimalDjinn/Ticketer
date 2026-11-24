@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { and, asc, count, desc, eq, inArray, isNull, max, ne, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
@@ -166,6 +166,9 @@ export async function toTaskCommentDTOs(rows: (typeof schema.taskComments.$infer
     parentId: c.parentId,
     authorId: c.authorId,
     authorName: c.authorId ? (names.get(c.authorId) ?? 'Deleted user') : 'Deleted user',
+    // Task comments are only ever seen by internal people.
+    authorIsInternal: true,
+    internal: false,
     body: c.body,
     createdAt: c.createdAt,
     attachments: files.get(c.id) ?? [],
@@ -227,8 +230,12 @@ export async function ensureStatusInProject(statusId: number, projectId: number)
 
 export async function ensureAssignable(userId: string | null | undefined) {
   if (!userId) return
-  const user = await db.query.users.findFirst({ where: and(eq(schema.users.id, userId), eq(schema.users.isGuest, false)), columns: { id: true } })
-  if (!user) throw createError({ status: 400, message: 'That person is not a member' })
+  // Tasks go to people who can work on them: admins and members (not viewers or people outside the team).
+  const user = await db.query.users.findFirst({
+    where: and(eq(schema.users.id, userId), eq(schema.users.isGuest, false), inArray(schema.users.role, [...STAFF_ROLES])),
+    columns: { id: true },
+  })
+  if (!user) throw createError({ status: 400, message: 'Tasks can only be assigned to admins and members' })
 }
 
 export async function setTaskLabels(taskId: number, labelIds: number[]) {
@@ -243,7 +250,7 @@ export async function members() {
   const rows = await db
     .select()
     .from(schema.users)
-    .where(and(eq(schema.users.isGuest, false), ne(schema.users.role, 'viewer')))
+    .where(and(eq(schema.users.isGuest, false), inArray(schema.users.role, [...STAFF_ROLES])))
     .orderBy(asc(schema.users.name))
   return rows.map(toPublicUser)
 }

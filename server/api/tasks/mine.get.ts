@@ -3,7 +3,7 @@ import { db, schema } from 'hub:db'
 
 /** Open tasks assigned to the signed-in person, across projects. */
 export default defineEventHandler(async (event) => {
-  const user = await requireMember(event)
+  const user = await requireInternal(event)
   const rows = await db
     .select({ task: schema.tasks })
     .from(schema.tasks)

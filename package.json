@@ -9,9 +9,9 @@
   },
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build",
-    "build:node": "NITRO_PRESET=node-server nuxt build",
-    "build:cloudflare": "NITRO_PRESET=cloudflare-durable nuxt build",
+    "build": "node scripts/build.mjs",
+    "build:node": "NITRO_PRESET=node-server node scripts/build.mjs",
+    "build:cloudflare": "NITRO_PRESET=cloudflare-durable node scripts/build.mjs",
     "preview": "nuxt preview",
     "start": "node .output/server/index.mjs",
     "postinstall": "nuxt prepare",
@@ -19,9 +19,10 @@
     "db:generate": "nuxt db generate",
     "db:migrate": "nuxt db migrate",
     "db:studio": "drizzle-kit studio",
-    "deploy": "pnpm build:cloudflare && wrangler deploy --config .output/server/wrangler.json",
+    "deploy": "wrangler deploy",
     "cf:migrate": "wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json",
-    "admin": "node scripts/admin.mjs"
+    "admin": "node scripts/admin.mjs",
+    "cf:deploy": "pnpm build:cloudflare && wrangler deploy"
   },
   "dependencies": {
     "@dragdroptouch/drag-drop-touch": "^2.0.3",
@@ -54,5 +55,18 @@
     "typescript": "^5.9.3",
     "vue-tsc": "^3.3.11",
     "wrangler": "^4.166.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "NUXT_APP_SECRET": {
+        "description": "Seals sign-in cookies and encrypts saved secrets. Generate one with `openssl rand -base64 32` (at least 32 characters). Keep it: changing it signs everyone out."
+      },
+      "NUXT_ADMIN_EMAIL": {
+        "description": "Email for the first admin account, created on the first visit. Leave empty and the first person to register becomes admin."
+      },
+      "NUXT_ADMIN_PASSWORD": {
+        "description": "Password for that first admin (at least 8 characters). Change it after signing in."
+      }
+    }
   }
 }

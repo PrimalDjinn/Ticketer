@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'internal'] })
 useSeoMeta({ title: 'Projects · Ticketer' })
 
 const { user } = useUserSession()

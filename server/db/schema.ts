@@ -20,8 +20,11 @@ export const users = sqliteTable('users', {
   email: text('email').unique(),
   name: text('name').unique(),
   passwordHash: text('password_hash'),
-  /** admin: manages people, projects and support; member: works on tasks; viewer: read-only. */
-  role: text('role', { enum: ['admin', 'member', 'viewer'] })
+  /**
+   * Internal people: admin (manages people, projects and support), member (works on tasks and support), viewer
+   * (read-only). external: someone outside the team; sees their own and public tickets and chats with support.
+   */
+  role: text('role', { enum: ['admin', 'member', 'viewer', 'external'] })
     .notNull()
     .default('member'),
   isGuest: integer('is_guest', { mode: 'boolean' }).notNull().default(true),
@@ -46,7 +49,7 @@ export const invites = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     email: text('email').notNull(),
-    role: text('role', { enum: ['admin', 'member', 'viewer'] })
+    role: text('role', { enum: ['admin', 'member', 'viewer', 'external'] })
       .notNull()
       .default('member'),
     tokenHash: text('token_hash').notNull().unique(),
@@ -70,6 +73,8 @@ export const tickets = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     reference: text('reference').notNull().unique(),
+    /** Short summary. Older tickets have none; their first line of `info` stands in. */
+    title: text('title'),
     info: text('info').notNull(),
     urgency: text('urgency', { enum: ['Default', 'Urgent', 'Emergency'] })
       .notNull()
@@ -80,11 +85,36 @@ export const tickets = sqliteTable(
     creatorId: text('creator_id').references(() => users.id, { onDelete: 'set null' }),
     /** The support person handling the ticket. */
     assigneeId: text('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    /** private: the reporter and internal people. public: anyone, including visitors without an account. */
+    visibility: text('visibility', { enum: ['private', 'public'] })
+      .notNull()
+      .default('private'),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
     createdAt: createdAt(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
     resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
   },
-  (t) => [index('tickets_status_idx').on(t.status), index('tickets_creator_idx').on(t.creatorId), index('tickets_assignee_idx').on(t.assigneeId)],
+  (t) => [
+    index('tickets_status_idx').on(t.status),
+    index('tickets_creator_idx').on(t.creatorId),
+    index('tickets_assignee_idx').on(t.assigneeId),
+    index('tickets_visibility_idx').on(t.visibility),
+  ],
+)
+
+/** People following a ticket's updates: the reporter, people who replied, and anyone who pressed Follow. */
+export const ticketWatchers = sqliteTable(
+  'ticket_watchers',
+  {
+    ticketId: integer('ticket_id')
+      .notNull()
+      .references(() => tickets.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.ticketId, t.userId] }), index('ticket_watchers_user_idx').on(t.userId)],
 )
 
 export const comments = sqliteTable(
@@ -97,12 +127,77 @@ export const comments = sqliteTable(
     parentId: integer('parent_id').references((): AnySQLiteColumn => comments.id, { onDelete: 'cascade' }),
     authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
     body: text('body').notNull().default(''),
+    /** Internal notes are only ever shown to internal people. */
+    internal: integer('internal', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [index('comments_ticket_idx').on(t.ticketId)],
 )
 
-/** A conversation between exactly two users; the id is both user ids sorted and joined, so it is stable. */
+/**
+ * Support conversations: someone outside the team (an external account or a guest) talking to the support team as a
+ * whole. Any internal person can reply; one can be assigned.
+ */
+export const conversations = sqliteTable(
+  'conversations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    customerId: text('customer_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    subject: text('subject'),
+    status: text('status', { enum: ['open', 'closed'] })
+      .notNull()
+      .default('open'),
+    assigneeId: text('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    /** Ticket opened from this conversation. */
+    ticketId: integer('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    lastMessageAt: integer('last_message_at', { mode: 'timestamp_ms' }),
+    closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [
+    index('conversations_customer_idx').on(t.customerId),
+    index('conversations_status_idx').on(t.status, t.lastMessageAt),
+    index('conversations_assignee_idx').on(t.assigneeId),
+  ],
+)
+
+export const conversationMessages = sqliteTable(
+  'conversation_messages',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+    body: text('body').notNull().default(''),
+    /** Notes between teammates inside a conversation; never shown to the customer. */
+    internal: integer('internal', { mode: 'boolean' }).notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index('conversation_messages_conversation_idx').on(t.conversationId)],
+)
+
+/** How far each person has read a conversation (customer and every teammate separately). */
+export const conversationReads = sqliteTable(
+  'conversation_reads',
+  {
+    conversationId: integer('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    readAt: integer('read_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.conversationId, t.userId] })],
+)
+
+/**
+ * Direct messages between two internal people; the id is both user ids sorted and joined, so it is stable. Support
+ * chats with people outside the team live in `conversations`.
+ */
 export const chats = sqliteTable('chats', {
   id: text('id').primaryKey(),
   userA: text('user_a')
@@ -153,6 +248,7 @@ export const attachments = sqliteTable(
     messageId: integer('message_id').references(() => messages.id, { onDelete: 'cascade' }),
     taskId: integer('task_id').references((): AnySQLiteColumn => tasks.id, { onDelete: 'cascade' }),
     taskCommentId: integer('task_comment_id').references((): AnySQLiteColumn => taskComments.id, { onDelete: 'cascade' }),
+    conversationMessageId: integer('conversation_message_id').references((): AnySQLiteColumn => conversationMessages.id, { onDelete: 'cascade' }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -162,6 +258,7 @@ export const attachments = sqliteTable(
     index('attachments_message_idx').on(t.messageId),
     index('attachments_task_idx').on(t.taskId),
     index('attachments_task_comment_idx').on(t.taskCommentId),
+    index('attachments_conversation_message_idx').on(t.conversationMessageId),
   ],
 )
 
@@ -375,3 +472,98 @@ export type ProjectStatus = typeof projectStatuses.$inferSelect
 export type Task = typeof tasks.$inferSelect
 export type Label = typeof labels.$inferSelect
 export type Invite = typeof invites.$inferSelect
+export type Conversation = typeof conversations.$inferSelect
+export type ConversationMessage = typeof conversationMessages.$inferSelect
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Single sign-on and app integrations
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Another product allowed to send its users here ("Report a problem" buttons). The API key is stored as a SHA-256 hash
+ * only; the signing secret (HMAC for browser links) has to be recoverable, so it is kept encrypted (see `encryptSecret`).
+ */
+export const integrationApps = sqliteTable('integration_apps', {
+  /** Public id, used in signed links (`app=`). */
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** Origins (scheme://host[:port]) a `returnUrl` may point to. Empty: no "Back to" link. */
+  allowedOrigins: text('allowed_origins', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  /** Where people land when the request names no target. */
+  landing: text('landing', { enum: ['new-ticket', 'chat', 'tickets'] })
+    .notNull()
+    .default('new-ticket'),
+  /** May create accounts for people who have none yet (always as external). */
+  canProvision: integer('can_provision', { mode: 'boolean' }).notNull().default(true),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  keyHash: text('key_hash').notNull().unique(),
+  /** First characters of the key, so admins can tell keys apart. */
+  keyPrefix: text('key_prefix').notNull(),
+  signingSecret: text('signing_secret').notNull(),
+  createdById: text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  rotatedAt: integer('rotated_at', { mode: 'timestamp_ms' }),
+  lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+  /** API calls made with the key. */
+  apiCalls: integer('api_calls').notNull().default(0),
+  /** People signed in through the app (login links and signed links). */
+  signIns: integer('sign_ins').notNull().default(0),
+  ticketsCreated: integer('tickets_created').notNull().default(0),
+})
+
+/**
+ * An outside identity linked to an account: `oidc` (subject = the provider's `sub`) or `app:<integration app id>`
+ * (subject = the other product's user id).
+ */
+export const userIdentities = sqliteTable(
+  'user_identities',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    provider: text('provider').notNull(),
+    subject: text('subject').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    email: text('email'),
+    createdAt: createdAt(),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [uniqueIndex('user_identities_provider_subject_idx').on(t.provider, t.subject), index('user_identities_user_idx').on(t.userId)],
+)
+
+/** Single-use sign-in links handed out to integration apps (valid for minutes). Only the token's hash is stored. */
+export const loginLinks = sqliteTable(
+  'login_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    tokenHash: text('token_hash').notNull().unique(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    appId: text('app_id').references(() => integrationApps.id, { onDelete: 'cascade' }),
+    /** Internal path to open after signing in, built by the server. */
+    target: text('target').notNull(),
+    /** Validated against the app's allowed origins when the link was made. */
+    returnUrl: text('return_url'),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('login_links_expires_idx').on(t.expiresAt)],
+)
+
+/** Nonces of signed launch links already seen, kept until the link would have expired anyway (replay protection). */
+export const integrationNonces = sqliteTable(
+  'integration_nonces',
+  {
+    appId: text('app_id')
+      .notNull()
+      .references(() => integrationApps.id, { onDelete: 'cascade' }),
+    nonce: text('nonce').notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.appId, t.nonce] }), index('integration_nonces_expires_idx').on(t.expiresAt)],
+)
+
+export type IntegrationApp = typeof integrationApps.$inferSelect
+export type UserIdentity = typeof userIdentities.$inferSelect

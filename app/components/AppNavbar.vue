@@ -24,6 +24,7 @@ const connection = computed(() => {
       <slot name="title" />
     </template>
     <template #right>
+      <IntegrationsBackLink class="hidden sm:flex" />
       <slot name="right" />
       <ClientOnly>
         <UTooltip :text="connection.label">

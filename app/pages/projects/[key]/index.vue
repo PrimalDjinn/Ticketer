@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { TaskMove } from '~/composables/taskDragDrop'
 import type { TaskDates } from '~/utils/dates'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'internal'] })
 
 const route = useRoute()
 const router = useRouter()

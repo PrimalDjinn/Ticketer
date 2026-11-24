@@ -43,6 +43,20 @@
       "when": 1795497378757,
       "tag": "0005_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795497978802,
+      "tag": "0006_external_public_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795499218165,
+      "tag": "0007_sso_integrations",
+      "breakpoints": true
     }
   ]
 }

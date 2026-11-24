@@ -8,19 +8,15 @@ const fields = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const user = await ensureUser(event)
+  const user = await requireInternal(event)
   const { files, text } = await readMultipart(event)
   const input = fields.parse({ to: text('to'), body: text('body') })
   if (!input.body && !files.length) throw createError({ status: 400, message: 'Write a message or attach a file' })
   if (input.to === user.id) throw createError({ status: 400, message: 'You cannot message yourself' })
 
   const recipient = await db.query.users.findFirst({ where: eq(schema.users.id, input.to) })
-  if (!recipient) throw createError({ status: 404, message: 'That person no longer exists' })
-  // Guests and regular users talk to support; only admins can start conversations with anyone.
-  if (recipient.role !== 'admin' && !user.isAdmin) {
-    const existing = await db.query.chats.findFirst({ where: eq(schema.chats.id, chatIdFor(user.id, recipient.id)) })
-    if (!existing) throw createError({ status: 403, message: 'You can only message support' })
-  }
+  // Direct messages are between people on the team; outsiders use support conversations.
+  if (!recipient || !isInternal(recipient)) throw createError({ status: 404, message: 'That person is not on the team' })
 
   const chatId = chatIdFor(user.id, recipient.id)
   const now = new Date()

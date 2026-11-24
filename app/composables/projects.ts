@@ -9,7 +9,7 @@ export function useProjects() {
   const request = useRequestFetch()
 
   async function refresh() {
-    if (!user.value || user.value.isGuest) {
+    if (!isInternal(user.value)) {
       projects.value = []
       return
     }
