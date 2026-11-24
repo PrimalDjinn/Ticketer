@@ -96,6 +96,19 @@ const assign = (ticket: TicketDTO, assigneeId: string | null) =>
 // Support → engineering hand-off, same as on the ticket page.
 const { active: projects } = useProjects()
 const handingOff = ref<number | null>(null)
+// A ticket that already has a task asks first, so the same work doesn't land on a board twice by accident.
+const confirmHandOff = ref<{ ticket: TicketDTO; projectKey: string; projectName: string } | null>(null)
+function handOff(ticket: TicketDTO, project: { key: string; name: string }) {
+  if (hasTask(ticket)) confirmHandOff.value = { ticket, projectKey: project.key, projectName: project.name }
+  else createTaskFrom(ticket, project.key)
+}
+async function confirmedHandOff() {
+  const pending = confirmHandOff.value
+  if (!pending) return
+  await createTaskFrom(pending.ticket, pending.projectKey)
+  confirmHandOff.value = null
+}
+
 async function createTaskFrom(ticket: TicketDTO, projectKey: string) {
   handingOff.value = ticket.id
   try {
@@ -112,16 +125,14 @@ async function createTaskFrom(ticket: TicketDTO, projectKey: string) {
     })
   } catch (e) {
     toast.add({ title: errorMessage(e, 'Could not create the task'), color: 'error' })
-    refresh() // someone else may have created it meanwhile
   } finally {
     handingOff.value = null
   }
 }
 const hasTask = (ticket: TicketDTO) => !!ticket.tasks?.length
-const taskLink = (ticket: TicketDTO) => {
-  const task = ticket.tasks![0]!
-  return `/projects/${task.projectKey}/${task.number}`
-}
+const taskRefs = (ticket: TicketDTO) => (ticket.tasks ?? []).map((t) => t.ref)
+const openTaskItems = (ticket: TicketDTO) =>
+  (ticket.tasks ?? []).map((t) => ({ label: `Open ${t.ref}`, icon: 'i-lucide-square-kanban', to: `/projects/${t.projectKey}/${t.number}` }))
 
 // Admins and members can take a ticket; same list as the ticket page's Assignee field.
 const { data: staffPeople } = await useFetch<PublicUser[]>('/api/members', { default: () => [], immediate: staff.value })
@@ -136,9 +147,12 @@ const assignItems = (ticket: TicketDTO) => [
   })),
 ]
 
+const projectChoices = (ticket: TicketDTO) =>
+  projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder-kanban', onSelect: () => handOff(ticket, p) }))
+/** The folder button's menu: the ticket's tasks first (if any), then where to create one. */
 const projectItems = (ticket: TicketDTO) => [
-  [{ type: 'label' as const, label: 'Create task in…' }],
-  projects.value.map((p) => ({ label: p.name, suffix: p.key, icon: 'i-lucide-folder-kanban', onSelect: () => createTaskFrom(ticket, p.key) })),
+  ...(hasTask(ticket) ? [openTaskItems(ticket)] : []),
+  [{ type: 'label' as const, label: hasTask(ticket) ? 'Create another task in…' : 'Create task in…' }, ...projectChoices(ticket)],
 ]
 
 function actionsFor(ticket: TicketDTO) {
@@ -159,11 +173,12 @@ function actionsFor(ticket: TicketDTO) {
         ? { label: 'Make private', icon: 'i-lucide-lock', onSelect: () => patchTicket(ticket, { visibility: 'private' }, () => 'Made private', 'i-lucide-lock') }
         : { label: 'Make public…', icon: 'i-lucide-globe', onSelect: () => navigateTo(`/tickets/${ticket.id}`) },
     ],
-    hasTask(ticket)
-      ? [{ label: `Open task ${ticket.tasks![0]!.ref}`, icon: 'i-lucide-square-kanban', to: taskLink(ticket) }]
-      : projects.value.length
-        ? [{ label: 'Create task in…', icon: 'i-lucide-folder-input', children: projectItems(ticket).slice(1) }]
-        : [],
+    [
+      ...openTaskItems(ticket),
+      ...(projects.value.length
+        ? [{ label: hasTask(ticket) ? 'Create another task in…' : 'Create task in…', icon: 'i-lucide-folder-input', children: projectChoices(ticket) }]
+        : []),
+    ],
   ]
 }
 
@@ -300,17 +315,15 @@ const emptyText = computed(() => {
         </template>
         <template #actions-cell="{ row }">
           <div class="flex justify-end gap-0.5" @click.stop>
-            <UTooltip v-if="hasTask(row.original)" :text="`Open task ${row.original.tasks![0]!.ref}`">
-              <UButton icon="i-lucide-square-kanban" color="neutral" variant="ghost" :to="taskLink(row.original)" :aria-label="`Open task ${row.original.tasks![0]!.ref}`" />
-            </UTooltip>
-            <UDropdownMenu v-else-if="projects.length" :items="projectItems(row.original)" :content="{ align: 'end' }">
-              <UTooltip text="Create task in…">
+            <UDropdownMenu v-if="projects.length || hasTask(row.original)" :items="projectItems(row.original)" :content="{ align: 'end' }">
+              <UTooltip :text="hasTask(row.original) ? `Has task ${taskRefs(row.original).join(', ')}` : 'Create task in…'">
+                <!-- Tickets that already went to a project stand out, so they aren't handed off twice by accident. -->
                 <UButton
-                  icon="i-lucide-folder-input"
-                  color="neutral"
-                  variant="ghost"
+                  :icon="hasTask(row.original) ? 'i-lucide-folder-check' : 'i-lucide-folder-input'"
+                  :color="hasTask(row.original) ? 'success' : 'neutral'"
+                  :variant="hasTask(row.original) ? 'soft' : 'ghost'"
                   :loading="handingOff === row.original.id"
-                  :aria-label="`Create a task from ${row.original.title}`"
+                  :aria-label="hasTask(row.original) ? `Tasks for ${row.original.title}: ${taskRefs(row.original).join(', ')}` : `Create a task from ${row.original.title}`"
                 />
               </UTooltip>
             </UDropdownMenu>
@@ -369,6 +382,16 @@ const emptyText = computed(() => {
       <div v-if="data.total > pageSize" class="flex justify-center border-t border-default pt-4">
         <UPagination :page="filters.page" :total="data.total" :items-per-page="pageSize" @update:page="(p) => setFilters({ ...filters, page: p })" />
       </div>
+
+      <TicketHandOffConfirm
+        v-if="confirmHandOff"
+        :open="!!confirmHandOff"
+        :existing="taskRefs(confirmHandOff.ticket)"
+        :project-name="confirmHandOff.projectName"
+        :loading="handingOff === confirmHandOff.ticket.id"
+        @update:open="(v) => !v && (confirmHandOff = null)"
+        @confirm="confirmedHandOff"
+      />
     </template>
   </UDashboardPanel>
 </template>

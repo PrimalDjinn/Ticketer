@@ -181,7 +181,18 @@ async function deleteTicket() {
 const { active: projects, refresh: refreshProjects } = useProjects()
 if (staff.value) await refreshProjects()
 const handingOff = ref(false)
-const handOffItems = computed(() => projects.value.map((p) => ({ label: p.name, suffix: p.key, onSelect: () => createTask(p.key) })))
+const handOffItems = computed(() => projects.value.map((p) => ({ label: p.name, suffix: p.key, onSelect: () => handOff(p) })))
+// A ticket that already has a task asks first, so the same work doesn't land on a board twice by accident.
+const confirmHandOff = ref<{ key: string; name: string } | null>(null)
+function handOff(project: { key: string; name: string }) {
+  if (ticket.value?.tasks.length) confirmHandOff.value = project
+  else createTask(project.key)
+}
+async function confirmedHandOff() {
+  if (!confirmHandOff.value) return
+  await createTask(confirmHandOff.value.key)
+  confirmHandOff.value = null
+}
 async function createTask(projectKey: string) {
   handingOff.value = true
   try {
@@ -436,7 +447,7 @@ async function copyReference() {
 
           <UCard v-if="internal && (ticket.tasks.length || (staff && projects.length))" variant="subtle">
             <p class="mb-3 text-sm font-medium text-highlighted">Tasks</p>
-            <ul v-if="ticket.tasks.length" class="space-y-1.5">
+            <ul v-if="ticket.tasks.length" class="mb-3 space-y-1.5">
               <li v-for="t in ticket.tasks" :key="t.id">
                 <NuxtLink :to="`/projects/${t.projectKey}/${t.number}`" class="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-elevated">
                   <UIcon :name="t.isDone ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" class="size-4 shrink-0" :class="t.isDone ? 'text-success' : 'text-muted'" />
@@ -446,8 +457,16 @@ async function copyReference() {
                 <p class="ml-7 text-xs text-dimmed">{{ t.status }}</p>
               </li>
             </ul>
-            <UDropdownMenu v-if="staff && projects.length && !ticket.tasks.length" :items="handOffItems" :content="{ align: 'start' }">
-              <UButton icon="i-lucide-folder-input" label="Create task in…" color="neutral" variant="outline" size="sm" block :loading="handingOff" />
+            <UDropdownMenu v-if="staff && projects.length" :items="handOffItems" :content="{ align: 'start' }">
+              <UButton
+                :icon="ticket.tasks.length ? 'i-lucide-folder-check' : 'i-lucide-folder-input'"
+                :label="ticket.tasks.length ? 'Create another task in…' : 'Create task in…'"
+                :color="ticket.tasks.length ? 'success' : 'neutral'"
+                :variant="ticket.tasks.length ? 'soft' : 'outline'"
+                size="sm"
+                block
+                :loading="handingOff"
+              />
             </UDropdownMenu>
           </UCard>
 
@@ -499,6 +518,16 @@ async function copyReference() {
           </div>
         </template>
       </UModal>
+
+      <TicketHandOffConfirm
+        v-if="confirmHandOff"
+        :open="!!confirmHandOff"
+        :existing="ticket?.tasks.map((t) => t.ref) ?? []"
+        :project-name="confirmHandOff.name"
+        :loading="handingOff"
+        @update:open="(v) => !v && (confirmHandOff = null)"
+        @confirm="confirmedHandOff"
+      />
 
       <UModal v-model:open="confirmDelete" title="Delete this ticket?" description="The ticket, its comments and every attached file are removed for good.">
         <template #footer>
