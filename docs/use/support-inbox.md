@@ -40,13 +40,10 @@ Viewers can read conversations but can't reply, assign or close them.
 ## Reply or write an internal note
 
 1. Select a conversation.
-2. The message box starts on **Internal note**, which only the team sees. To answer the customer, select **Reply**: the
-   box turns amber and says the customer will see it.
+2. In the message box, choose **Reply** or **Internal note**.
 3. Write the message and select **Send** (or **Add note**).
 
-The customer is notified of replies. Internal notes are for the team only; the assignee is notified of them. After
-each message the box goes back to **Internal note**, so select **Reply** again for every message the customer should
-see.
+The customer is notified of replies. Internal notes are for the team only; the assignee is notified of them.
 
 ## Assign a conversation
 

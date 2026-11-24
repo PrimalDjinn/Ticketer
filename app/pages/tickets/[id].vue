@@ -436,7 +436,7 @@ async function copyReference() {
 
           <UCard v-if="internal && (ticket.tasks.length || (staff && projects.length))" variant="subtle">
             <p class="mb-3 text-sm font-medium text-highlighted">Tasks</p>
-            <ul v-if="ticket.tasks.length" class="mb-3 space-y-1.5">
+            <ul v-if="ticket.tasks.length" class="space-y-1.5">
               <li v-for="t in ticket.tasks" :key="t.id">
                 <NuxtLink :to="`/projects/${t.projectKey}/${t.number}`" class="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-elevated">
                   <UIcon :name="t.isDone ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" class="size-4 shrink-0" :class="t.isDone ? 'text-success' : 'text-muted'" />
@@ -446,7 +446,7 @@ async function copyReference() {
                 <p class="ml-7 text-xs text-dimmed">{{ t.status }}</p>
               </li>
             </ul>
-            <UDropdownMenu v-if="staff && projects.length" :items="handOffItems" :content="{ align: 'start' }">
+            <UDropdownMenu v-if="staff && projects.length && !ticket.tasks.length" :items="handOffItems" :content="{ align: 'start' }">
               <UButton icon="i-lucide-folder-input" label="Create task in…" color="neutral" variant="outline" size="sm" block :loading="handingOff" />
             </UDropdownMenu>
           </UCard>

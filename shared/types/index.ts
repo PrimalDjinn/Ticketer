@@ -76,6 +76,8 @@ export interface TicketDTO {
   createdAt: string | number | Date
   updatedAt: string | number | Date | null
   resolvedAt: string | number | Date | null
+  /** Tasks created from this ticket. Only the ticket list for the team fills this in. */
+  tasks?: { ref: string; projectKey: string; number: number }[]
 }
 
 export interface CommentDTO {
