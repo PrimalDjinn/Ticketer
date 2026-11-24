@@ -266,7 +266,9 @@ export async function findOrProvisionPerson(
 
   if (user) {
     if (isInternal(user)) refuseTeam(input.email)
-    if (input.externalId) await linkIdentity(provider, input.externalId, user.id, input.email)
+    // Remember that this app brought the person here (it may later delete them on their behalf). Without an
+    // externalId the email stands in, as for accounts the app creates.
+    await linkIdentity(provider, input.externalId ?? `email:${input.email}`, user.id, input.email)
     return { user, created: false }
   }
 

@@ -120,6 +120,10 @@ export async function deleteAccount(event: H3Event, userId: string, options: Del
   await db.delete(schema.notifications).where(eq(schema.notifications.userId, userId))
   await db.delete(schema.ticketWatchers).where(eq(schema.ticketWatchers.userId, userId))
   await db.delete(schema.conversationReads).where(eq(schema.conversationReads.userId, userId))
+  // Their name inside other people's records: notification texts ("dana opened a ticket") and task history
+  // ("assigned to dana"). Replaced as a whole word only, so other words that contain it are left alone.
+  if (user.name) await scrubName(user.name)
+
   // tickets.assignee_id was added by ALTER TABLE, so older databases lack its ON DELETE SET NULL: clear it here.
   await db.update(schema.tickets).set({ assigneeId: null }).where(eq(schema.tickets.assigneeId, userId))
   // Remaining references (kept tickets, replies, tasks, uploads on kept records) become "Deleted user" via set null.
@@ -130,7 +134,8 @@ export async function deleteAccount(event: H3Event, userId: string, options: Del
     userId,
     role: user.isGuest ? 'guest' : user.role,
     via: options.via,
-    actorId: options.actorId,
+    // Self-deletion has no other actor; don't keep the account's id twice.
+    actorId: options.via === 'self' ? null : options.actorId,
     tickets: options.tickets,
     summary,
   })
@@ -160,4 +165,23 @@ export async function deletionPreview(userId: string) {
     conversations: Number(conversations[0]?.n ?? 0),
     directChats: Number(chats[0]?.n ?? 0),
   }
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Replaces a deleted person's username with "Deleted user" in notification texts and task history values. */
+async function scrubName(name: string) {
+  const word = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(name)}(?![\\p{L}\\p{N}_])`, 'gu')
+  const like = `%${name.replace(/[%_\\]/g, (c) => `\\${c}`)}%`
+  const notes = await db
+    .select({ id: schema.notifications.id, message: schema.notifications.message })
+    .from(schema.notifications)
+    .where(sql`${schema.notifications.message} LIKE ${like} ESCAPE '\\'`)
+  for (const note of notes) {
+    const message = note.message.replace(word, 'Deleted user')
+    if (message !== note.message) await db.update(schema.notifications).set({ message }).where(eq(schema.notifications.id, note.id))
+  }
+  // Task history stores names as whole values (e.g. the assignee before and after a change).
+  await db.update(schema.taskActivity).set({ fromValue: 'Deleted user' }).where(eq(schema.taskActivity.fromValue, name))
+  await db.update(schema.taskActivity).set({ toValue: 'Deleted user' }).where(eq(schema.taskActivity.toValue, name))
 }
