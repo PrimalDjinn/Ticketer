@@ -44,6 +44,64 @@ const removed = computed(() => {
   return list
 })
 
+// Notifications: email copies and push to this browser
+interface NotificationSettings {
+  email: boolean
+  emailIsDefault: boolean
+  mailConfigured: boolean
+  browsers: { id: number; userAgent: string | null; createdAt: string | number; lastSentAt: string | number | null }[]
+}
+const { data: notif, refresh: refreshNotif } = await useFetch<NotificationSettings>('/api/account/notifications', { deep: true })
+const push = usePush()
+onMounted(() => push.refresh().catch(() => {}))
+async function setEmail(value: boolean) {
+  if (!notif.value) return
+  notif.value.email = value
+  try {
+    await $fetch('/api/account/notifications', { method: 'PUT', body: { email: value } })
+    notif.value.emailIsDefault = false
+  } catch (e) {
+    notif.value.email = !value
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+async function setPush(value: boolean) {
+  try {
+    if (value) {
+      if (!(await push.enable())) {
+        toast.add({ title: 'Notifications are blocked for this site', description: 'Allow them in the browser’s site settings, then try again.', color: 'warning' })
+      }
+    } else {
+      await push.disable()
+    }
+  } catch (e) {
+    toast.add({ title: errorMessage(e, 'Could not change push notifications'), color: 'error' })
+  }
+  await refreshNotif()
+}
+const testing = ref(false)
+async function testPush() {
+  testing.value = true
+  try {
+    const result = await $fetch<{ sent: number; failed: number }>('/api/push/test', { method: 'POST' })
+    toast.add({
+      title: result.sent ? `Sent to ${result.sent} browser${result.sent === 1 ? '' : 's'}` : 'Nothing was delivered',
+      description: result.sent ? 'It shows when no Ticketer tab is in front of you.' : 'The push service refused the message; turn push off and on again.',
+      color: result.sent ? 'success' : 'warning',
+    })
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  } finally {
+    testing.value = false
+  }
+}
+function browserName(userAgent: string | null) {
+  if (!userAgent) return 'A browser'
+  const browser = /Edg\//.test(userAgent) ? 'Edge' : /Firefox\//.test(userAgent) ? 'Firefox' : /Chrome\//.test(userAgent) ? 'Chrome' : /Safari\//.test(userAgent) ? 'Safari' : 'A browser'
+  const os = /Android/.test(userAgent) ? 'Android' : /iPhone|iPad/.test(userAgent) ? 'iOS' : /Mac OS X/.test(userAgent) ? 'macOS' : /Windows/.test(userAgent) ? 'Windows' : /Linux/.test(userAgent) ? 'Linux' : ''
+  return os ? `${browser} on ${os}` : browser
+}
+
 // Change password
 const pw = reactive({ current: '', next: '', confirm: '' })
 const pwSaving = ref(false)
@@ -116,6 +174,48 @@ async function remove() {
               <dd class="text-highlighted">{{ formatDate(data.createdAt) }}</dd>
             </div>
           </dl>
+        </section>
+
+        <section v-if="notif" class="space-y-4">
+          <div>
+            <h2 class="font-semibold text-highlighted">Notifications</h2>
+            <p class="mt-1 text-sm text-muted">You always see notifications in the app. Choose how to hear about them when Ticketer isn't open.</p>
+          </div>
+          <div class="divide-y divide-default rounded-lg border border-default">
+            <div class="flex items-start justify-between gap-4 px-4 py-3">
+              <div>
+                <p class="text-sm font-medium text-highlighted">Push notifications on this device</p>
+                <p class="text-sm text-muted">
+                  <template v-if="!push.checked.value">Checking…</template>
+                  <template v-else-if="!push.supported.value">This browser doesn't support push notifications. On iPhone and iPad, add Ticketer to the Home Screen first.</template>
+                  <template v-else-if="push.permission.value === 'denied'">Blocked in this browser. Allow notifications for this site in the browser's settings.</template>
+                  <template v-else>Pops up on this device even when every Ticketer tab is closed.</template>
+                </p>
+                <p v-if="notif.browsers.length" class="mt-1 text-xs text-dimmed">
+                  On for: {{ notif.browsers.map((b) => browserName(b.userAgent)).join(', ') }}
+                  <UButton v-if="push.subscribed.value" size="xs" variant="link" color="neutral" label="Send a test" :loading="testing" class="ml-1 p-0" @click="testPush" />
+                </p>
+              </div>
+              <USwitch
+                :model-value="push.subscribed.value"
+                :loading="push.busy.value"
+                :disabled="!push.supported.value || push.permission.value === 'denied'"
+                aria-label="Push notifications on this device"
+                @update:model-value="setPush"
+              />
+            </div>
+            <div class="flex items-start justify-between gap-4 px-4 py-3">
+              <div>
+                <p class="text-sm font-medium text-highlighted">Email me notifications</p>
+                <p class="text-sm text-muted">
+                  A copy goes to {{ data.user.email }}, at most one per item every 10 minutes.
+                  <template v-if="notif.emailIsDefault">{{ notif.email ? 'On by default for people outside the team.' : 'Off by default for the team.' }}</template>
+                </p>
+                <p v-if="!notif.mailConfigured" class="mt-1 text-xs text-warning">Email isn't set up on this site yet, so nothing is sent for now.</p>
+              </div>
+              <USwitch :model-value="notif.email" aria-label="Email me notifications" @update:model-value="setEmail" />
+            </div>
+          </div>
         </section>
 
         <section class="space-y-4">

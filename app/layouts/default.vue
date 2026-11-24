@@ -120,7 +120,12 @@ const accountItems = computed<DropdownMenuItem[][]>(() => [
   [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: signOut }],
 ])
 
+const push = usePush()
+onMounted(() => push.refresh().catch(() => {}))
+
 async function signOut() {
+  // Stop push to this browser first, so the next person using it doesn't get this account's notifications.
+  if (push.subscribed.value) await push.disable().catch(() => {})
   await $fetch('/api/auth/logout', { method: 'POST' })
   await clear()
   await navigateTo('/auth/login')

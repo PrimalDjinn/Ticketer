@@ -117,6 +117,7 @@ export async function deleteAccount(event: H3Event, userId: string, options: Del
   await db.delete(schema.userIdentities).where(eq(schema.userIdentities.userId, userId))
   await db.delete(schema.loginLinks).where(eq(schema.loginLinks.userId, userId))
   await db.delete(schema.passwordResets).where(eq(schema.passwordResets.userId, userId))
+  await db.delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId))
   await db.delete(schema.notifications).where(eq(schema.notifications.userId, userId))
   await db.delete(schema.ticketWatchers).where(eq(schema.ticketWatchers.userId, userId))
   await db.delete(schema.conversationReads).where(eq(schema.conversationReads.userId, userId))

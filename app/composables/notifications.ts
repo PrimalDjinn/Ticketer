@@ -39,7 +39,8 @@ export function useNotificationFeed() {
     })
     if (document.visibilityState === 'hidden') {
       new Audio('/notification.mp3').play().catch(() => {})
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // With push on, the service worker shows it (also when the tab is closed); otherwise show it from the page.
+      if (!usePush().subscribed.value && 'Notification' in window && Notification.permission === 'granted') {
         new Notification('Ticketer', { body: notification.message })
       }
     }

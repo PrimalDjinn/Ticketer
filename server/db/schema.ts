@@ -29,6 +29,8 @@ export const users = sqliteTable('users', {
     .default('member'),
   isGuest: integer('is_guest', { mode: 'boolean' }).notNull().default(true),
   companyId: integer('company_id').references(() => companies.id, { onDelete: 'set null' }),
+  /** Email a copy of notifications. Null: the default for the role (on for people outside the team, off for the team). */
+  emailNotifications: integer('email_notifications', { mode: 'boolean' }),
   createdAt: createdAt(),
 })
 
@@ -273,9 +275,30 @@ export const notifications = sqliteTable(
     message: text('message').notNull(),
     link: text('link'),
     readAt: integer('read_at', { mode: 'timestamp_ms' }),
+    /** When a copy was emailed; used to send at most one email per link every few minutes. */
+    emailedAt: integer('emailed_at', { mode: 'timestamp_ms' }),
     createdAt: createdAt(),
   },
   (t) => [index('notifications_user_unread_idx').on(t.userId, t.readAt)],
+)
+
+/** Browsers that receive Web Push notifications (one row per browser profile and person). */
+export const pushSubscriptions = sqliteTable(
+  'push_subscriptions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull().unique(),
+    /** The browser's P-256 public key and auth secret (base64url), used to encrypt each message. */
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: createdAt(),
+    lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('push_subscriptions_user_idx').on(t.userId)],
 )
 
 // ---------------------------------------------------------------------------------------------------------------------

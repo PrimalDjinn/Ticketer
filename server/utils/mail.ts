@@ -147,3 +147,16 @@ export function inviteMail(link: string, inviter: string | null, role: UserRole)
 </td></tr></table></body></html>`
   return { text, html }
 }
+
+/** A copy of an in-app notification, with a link to the item and to the setting that turns these emails off. */
+export function notificationMail(message: string, url: string, settingsUrl: string) {
+  const text = `${message}\n\nOpen it: ${url}\n\nYou get these emails because notification emails are on for your account. Turn them off: ${settingsUrl}`
+  const html = `<!doctype html><html><body style="margin:0;padding:32px;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
+<table role="presentation" width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px">
+<tr><td>
+<p style="margin:0 0 24px;font-size:16px;line-height:1.6">${escapeHtml(message)}</p>
+<a href="${escapeHtml(url)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Open</a>
+<p style="margin:24px 0 0;font-size:13px;color:#71717a">You get these emails because notification emails are on for your account. <a href="${escapeHtml(settingsUrl)}" style="color:#71717a">Turn them off</a>.</p>
+</td></tr></table></body></html>`
+  return { text, html }
+}
