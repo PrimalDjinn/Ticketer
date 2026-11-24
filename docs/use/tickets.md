@@ -90,8 +90,9 @@ Admins and members can create a task from a ticket:
    end of the ticket's row instead.
 2. Choose a project.
 
-A ticket goes to one task only. Once it has one, **Create task in…** is replaced by a link to the task: under **Tasks**
-on the ticket, and as **Open task** in the ticket list.
+Once a ticket has a task, its button turns green: **Create another task in…** on the ticket, and a green folder with
+links to the ticket's tasks in the ticket list. Creating another task from it asks you to confirm first, so the same
+work doesn't land on a board twice by accident.
 
 The task gets the ticket's title and description, followed by a line `— From support ticket #` and the ticket's short
 reference, the one shown in the ticket's header. Its priority follows the ticket's urgency: **Emergency** becomes
