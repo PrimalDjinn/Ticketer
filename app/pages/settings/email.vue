@@ -124,7 +124,7 @@ async function sendTest() {
   <div v-if="data" class="space-y-8">
     <div>
       <h1 class="text-lg font-semibold text-highlighted">Email</h1>
-      <p class="text-sm text-muted">Used for invitations, password resets and notifications sent by email.</p>
+      <p class="text-sm text-muted">Used for invitations and password resets.</p>
     </div>
 
     <UAlert v-if="status" :color="status.color" variant="subtle" :icon="status.icon" :title="status.title" :description="status.description" />

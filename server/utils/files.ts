@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { blob } from 'hub:blob'
 import { db, schema } from 'hub:db'
-import { inArray } from 'drizzle-orm'
+import { inArray, type SQL } from 'drizzle-orm'
 import { ulid } from 'ulid'
 
 type Owner = { ticketId: number } | { commentId: number } | { messageId: number } | { taskId: number } | { taskCommentId: number } | { conversationMessageId: number }
@@ -47,6 +47,17 @@ export async function storeAttachments(folder: string, files: File[], owner: Own
     await blob.del(stored.map((s) => s.pathname)).catch(() => {})
     throw error
   }
+}
+
+/**
+ * Removes attachment rows matching `where` and returns their stored paths, so the caller can delete the files once the
+ * owning rows are gone. Explicit on purpose: some attachment foreign keys were added by `ALTER TABLE` migrations, which
+ * created them without ON DELETE CASCADE on existing databases, so the parent's delete would otherwise be refused.
+ */
+export async function takeAttachments(where: SQL | undefined) {
+  if (!where) return []
+  const rows = await db.delete(schema.attachments).where(where).returning({ pathname: schema.attachments.pathname })
+  return rows.map((r) => r.pathname)
 }
 
 export async function deleteBlobs(pathnames: string[]) {

@@ -96,8 +96,8 @@ CREATE INDEX `tasks_status_idx` ON `tasks` (`status_id`);--> statement-breakpoin
 CREATE INDEX `tasks_assignee_idx` ON `tasks` (`assignee_id`);--> statement-breakpoint
 CREATE INDEX `tasks_parent_idx` ON `tasks` (`parent_id`);--> statement-breakpoint
 CREATE INDEX `tasks_ticket_idx` ON `tasks` (`ticket_id`);--> statement-breakpoint
-ALTER TABLE `attachments` ADD `task_id` integer REFERENCES tasks(id);--> statement-breakpoint
-ALTER TABLE `attachments` ADD `task_comment_id` integer REFERENCES task_comments(id);--> statement-breakpoint
+ALTER TABLE `attachments` ADD `task_id` integer REFERENCES tasks(id) ON DELETE cascade;--> statement-breakpoint
+ALTER TABLE `attachments` ADD `task_comment_id` integer REFERENCES task_comments(id) ON DELETE cascade;--> statement-breakpoint
 CREATE INDEX `attachments_task_idx` ON `attachments` (`task_id`);--> statement-breakpoint
 CREATE INDEX `attachments_task_comment_idx` ON `attachments` (`task_comment_id`);--> statement-breakpoint
 ALTER TABLE `users` ADD `role` text DEFAULT 'member' NOT NULL;--> statement-breakpoint

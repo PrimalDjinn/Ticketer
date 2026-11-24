@@ -24,9 +24,17 @@ export async function startSession(event: H3Event, user: typeof schema.users.$in
   await replaceUserSession(event, { user: toPublicUser(user), loggedInAt: Date.now() })
 }
 
-/** The signed-in user (registered or guest). Throws 401 when there is no session at all. */
+/**
+ * The signed-in user (registered or guest). Throws 401 when there is no session, or when the account behind it was
+ * deleted (its session cookie may still exist on another device).
+ */
 export async function requireUser(event: H3Event) {
   const { user } = await requireUserSession(event)
+  const exists = await db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { id: true } })
+  if (!exists) {
+    await clearUserSession(event)
+    throw createError({ status: 401, message: 'This account no longer exists' })
+  }
   return user
 }
 

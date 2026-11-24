@@ -40,7 +40,7 @@ Built with Nuxt 4, Nuxt UI (Tailwind v4), Drizzle ORM through NuxtHub, and runs 
 
 ```bash
 pnpm install
-cp .env.example .env   # optional in dev: nuxt-auth-utils generates a session secret
+cp .env.example .env   # optional in dev: Nuxt generates a development NUXT_APP_SECRET
 pnpm dev               # http://localhost:3000, data in .data/
 ```
 
@@ -110,7 +110,7 @@ with a notice. To enable it in your fork, add:
 
 People can sign in with any OpenID Connect provider (Authentik, Keycloak, Entra ID, Google Workspace, Zitadel…):
 authorization code flow with PKCE (S256), `state` and `nonce`, discovery from `<issuer>/.well-known/openid-configuration`,
-and ID tokens verified against the provider's keys (RS/PS/ES256-512, EdDSA, or HS256 with the client secret). Plain
+and ID tokens verified against the provider's keys (RS256–512, PS256–512, ES256/ES384, EdDSA, or HS256 with the client secret). Plain
 `fetch` and WebCrypto, so it works the same on Node and Workers.
 
 Configure it in **Settings → Sign-in** (with a **Test connection** button and the callback URL to copy), or pin any

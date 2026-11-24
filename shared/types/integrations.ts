@@ -56,6 +56,8 @@ export interface IntegrationAppDTO {
   allowedOrigins: string[]
   landing: IntegrationLanding
   canProvision: boolean
+  /** May erase people it brought here (DELETE /api/integrations/v1/users). */
+  canDelete: boolean
   enabled: boolean
   keyPrefix: string
   createdBy: string | null

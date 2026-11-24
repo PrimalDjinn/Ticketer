@@ -13,12 +13,13 @@ const schema = z.object({
   origins: z.string().max(5000),
   landing: z.enum(INTEGRATION_LANDINGS),
   canProvision: z.boolean(),
+  canDelete: z.boolean(),
 })
 type Schema = z.output<typeof schema>
 const landingSchema = z.enum(INTEGRATION_LANDINGS)
 
 // A ref, not reactive(): vue-tsc 3.3 mis-types reactive objects used in narrowing template expressions.
-const state = ref<Schema>({ name: '', origins: '', landing: 'new-ticket', canProvision: true })
+const state = ref<Schema>({ name: '', origins: '', landing: 'new-ticket', canProvision: true, canDelete: false })
 function setLanding(value: unknown) {
   state.value.landing = landingSchema.parse(value)
 }
@@ -31,6 +32,7 @@ watch(open, (value) => {
     origins: props.app?.allowedOrigins.join('\n') ?? '',
     landing: props.app?.landing ?? 'new-ticket',
     canProvision: props.app?.canProvision ?? true,
+    canDelete: props.app?.canDelete ?? false,
   })
 })
 
@@ -43,6 +45,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     allowedOrigins: event.data.origins.split(/[\s,]+/).filter(Boolean),
     landing: event.data.landing,
     canProvision: event.data.canProvision,
+    canDelete: event.data.canDelete,
   }
   try {
     if (props.app) {
@@ -86,6 +89,13 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <p class="text-xs text-muted">People without an account get one (always as external). Off: only existing external accounts.</p>
           </div>
           <USwitch v-model="state.canProvision" aria-label="May create accounts" />
+        </div>
+        <div class="flex items-center justify-between gap-4 rounded-md bg-elevated/50 px-3 py-2.5">
+          <div>
+            <p class="text-sm font-medium text-highlighted">Can delete people</p>
+            <p class="text-xs text-muted">Lets the app erase accounts of external people it brought here, for data-deletion requests. Never team members.</p>
+          </div>
+          <USwitch v-model="state.canDelete" aria-label="Can delete people" />
         </div>
       </UForm>
     </template>

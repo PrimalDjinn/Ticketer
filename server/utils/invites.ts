@@ -84,7 +84,7 @@ export async function issueInvite(
     ? await db.update(schema.invites).set(values).where(eq(schema.invites.id, input.id)).returning()
     : await db.insert(schema.invites).values(values).returning()
 
-  const link = `${getRequestURL(event).origin}/auth/register?invite=${token}`
+  const link = `${siteOrigin(event)}/auth/register?invite=${token}`
   let emailed = false
   try {
     emailed = await sendMail(event, { to: input.email, subject: `${inviter.name} invited you to Ticketer`, ...inviteMail(link, inviter.name, input.role) })

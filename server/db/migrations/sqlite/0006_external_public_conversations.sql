@@ -47,7 +47,7 @@ CREATE TABLE `ticket_watchers` (
 );
 --> statement-breakpoint
 CREATE INDEX `ticket_watchers_user_idx` ON `ticket_watchers` (`user_id`);--> statement-breakpoint
-ALTER TABLE `attachments` ADD `conversation_message_id` integer REFERENCES conversation_messages(id);--> statement-breakpoint
+ALTER TABLE `attachments` ADD `conversation_message_id` integer REFERENCES conversation_messages(id) ON DELETE cascade;--> statement-breakpoint
 CREATE INDEX `attachments_conversation_message_idx` ON `attachments` (`conversation_message_id`);--> statement-breakpoint
 ALTER TABLE `comments` ADD `internal` integer DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE `tickets` ADD `title` text;--> statement-breakpoint

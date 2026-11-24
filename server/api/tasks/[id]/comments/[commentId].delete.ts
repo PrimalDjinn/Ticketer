@@ -19,9 +19,9 @@ export default defineEventHandler(async (event) => {
     grew = false
     for (const c of all) if (c.parentId && thread.has(c.parentId) && !thread.has(c.id)) (thread.add(c.id), (grew = true))
   }
-  const files = await db.select({ pathname: schema.attachments.pathname }).from(schema.attachments).where(inArray(schema.attachments.taskCommentId, [...thread]))
+  const files = await takeAttachments(inArray(schema.attachments.taskCommentId, [...thread]))
   await db.delete(schema.taskComments).where(eq(schema.taskComments.id, commentId))
-  event.waitUntil(deleteBlobs(files.map((f) => f.pathname)))
+  event.waitUntil(deleteBlobs(files))
   for (const removed of thread) publishTask(event, { type: 'task.comment.deleted', body: { id: removed, taskId: id } })
   return { ok: true }
 })

@@ -13,6 +13,7 @@ export default defineEventHandler(async (event): Promise<IntegrationAppCredentia
       allowedOrigins: input.allowedOrigins ?? [],
       landing: input.landing ?? 'new-ticket',
       canProvision: input.canProvision ?? true,
+      canDelete: input.canDelete ?? false,
       createdById: admin.id,
       ...credentials.columns,
     })

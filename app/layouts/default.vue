@@ -110,6 +110,7 @@ const searchGroups = computed(() => [
 const accountItems = computed<DropdownMenuItem[][]>(() => [
   [{ type: 'label', label: user.value?.email ?? '' }, { type: 'label', label: user.value ? roleMeta[user.value.role].label : '', icon: user.value ? roleMeta[user.value.role].icon : undefined }],
   [
+    { label: 'Account', icon: 'i-lucide-user-cog', to: '/account' },
     {
       label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
       icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',

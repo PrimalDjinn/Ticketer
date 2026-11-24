@@ -55,6 +55,7 @@ export async function appDTOs(rows: AppRow[]): Promise<IntegrationAppDTO[]> {
     allowedOrigins: r.allowedOrigins,
     landing: r.landing,
     canProvision: r.canProvision,
+    canDelete: r.canDelete,
     enabled: r.enabled,
     keyPrefix: r.keyPrefix,
     createdBy: r.createdById ? (names.get(r.createdById) ?? null) : null,
@@ -101,6 +102,7 @@ export const appInputShape = z.object({
   allowedOrigins: originList.optional(),
   landing: z.enum(INTEGRATION_LANDINGS).optional(),
   canProvision: z.boolean().optional(),
+  canDelete: z.boolean().optional(),
 })
 
 /** A `returnUrl` is only kept when its origin is one the admin allowed for the app. */
@@ -485,6 +487,11 @@ export async function forgetAppIdentities(appId: string) {
  * open their ticket, and hand back a single-use login link that lands on the target.
  */
 export async function startIntegrationSession(event: H3Event, app: AppRow, input: SessionInput): Promise<IntegrationSessionResult> {
+  // Reject a bad target before an account is created or an invitation used up.
+  if ((input.target ?? app.landing) === 'ticket' && !input.ticket) {
+    const existing = await db.query.users.findFirst({ where: eq(schema.users.email, input.email), columns: { id: true } })
+    await targetPath(app, existing ?? null, { target: 'ticket', ticketId: input.ticketId })
+  }
   const { user, created } = await findOrProvisionPerson(app, input)
   const ticket = input.ticket ? await createReportedTicket(event, app, user, input.ticket) : null
   const target = await targetPath(app, user, { target: input.target, ticketId: input.ticketId, createdTicketId: ticket?.id })

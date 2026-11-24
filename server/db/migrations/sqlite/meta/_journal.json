@@ -57,6 +57,13 @@
       "when": 1795499218165,
       "tag": "0007_sso_integrations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795503714131,
+      "tag": "0008_account_deletion",
+      "breakpoints": true
     }
   ]
 }

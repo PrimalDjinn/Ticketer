@@ -12,21 +12,18 @@ export default defineEventHandler(async (event) => {
     : []
   const files =
     taskIds.length || commentIds.length
-      ? await db
-          .select({ pathname: schema.attachments.pathname })
-          .from(schema.attachments)
-          .where(
-            or(
-              taskIds.length ? inArray(schema.attachments.taskId, taskIds) : undefined,
-              commentIds.length ? inArray(schema.attachments.taskCommentId, commentIds) : undefined,
-            ),
-          )
+      ? await takeAttachments(
+          or(
+            taskIds.length ? inArray(schema.attachments.taskId, taskIds) : undefined,
+            commentIds.length ? inArray(schema.attachments.taskCommentId, commentIds) : undefined,
+          ),
+        )
       : []
 
   // Tasks reference statuses without cascading, so remove them before the project (which cascades statuses).
   await db.delete(schema.tasks).where(eq(schema.tasks.projectId, project.id))
   await db.delete(schema.projects).where(eq(schema.projects.id, project.id))
-  event.waitUntil(deleteBlobs(files.map((f) => f.pathname)))
+  event.waitUntil(deleteBlobs(files))
   publish(event, channels.members, { type: 'project.deleted', body: { id: project.id } })
   return { ok: true }
 })

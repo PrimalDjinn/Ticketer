@@ -72,6 +72,7 @@ function onPosted(comment: CommentDTO) {
             <template v-else>{{ segment.text }}</template>
           </template>
         </p>
+        <p v-else-if="!comment.attachments.length" class="mt-1 text-sm text-dimmed italic">This reply was removed.</p>
         <AttachmentGrid v-if="comment.attachments.length" :attachments="comment.attachments" compact class="mt-2" />
         <div class="mt-1 flex gap-1">
           <UButton v-if="!readonly && (!comment.internal || allowInternal) && (depth ?? 0) < 4" size="xs" variant="link" color="neutral" icon="i-lucide-reply" label="Reply" class="px-0" @click="replying = !replying" />

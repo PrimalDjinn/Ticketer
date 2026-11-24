@@ -12,6 +12,8 @@ export const STAFF_ROLES = ['admin', 'member'] as const
 export const SIGNUP_MODES = ['invite', 'external', 'viewer', 'member'] as const
 export const TICKET_VISIBILITIES = ['private', 'public'] as const
 export const CONVERSATION_STATUSES = ['open', 'closed'] as const
+/** What happens to tickets a person opened when their account is deleted (see server/utils/accounts.ts). */
+export const ACCOUNT_TICKET_MODES = ['keep', 'delete-private', 'delete'] as const
 /** How long an invitation link stays valid. */
 export const INVITE_TTL_DAYS = 7
 export const TASK_REPEATS = ['daily', 'weekly', 'monthly', 'yearly', 'periodically'] as const

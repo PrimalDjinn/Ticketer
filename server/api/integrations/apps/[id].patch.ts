@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
       ...(input.allowedOrigins !== undefined && { allowedOrigins: input.allowedOrigins }),
       ...(input.landing !== undefined && { landing: input.landing }),
       ...(input.canProvision !== undefined && { canProvision: input.canProvision }),
+      ...(input.canDelete !== undefined && { canDelete: input.canDelete }),
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     })
     .where(eq(schema.integrationApps.id, id))

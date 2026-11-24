@@ -495,6 +495,8 @@ export const integrationApps = sqliteTable('integration_apps', {
     .default('new-ticket'),
   /** May create accounts for people who have none yet (always as external). */
   canProvision: integer('can_provision', { mode: 'boolean' }).notNull().default(true),
+  /** May delete the accounts of people it brought here (DELETE /api/integrations/v1/users). Off unless an admin enables it. */
+  canDelete: integer('can_delete', { mode: 'boolean' }).notNull().default(false),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   keyHash: text('key_hash').notNull().unique(),
   /** First characters of the key, so admins can tell keys apart. */
@@ -567,3 +569,22 @@ export const integrationNonces = sqliteTable(
 
 export type IntegrationApp = typeof integrationApps.$inferSelect
 export type UserIdentity = typeof userIdentities.$inferSelect
+
+/**
+ * Proof that an account was erased, kept without personal data: the opaque user id, when, how and by whom. Written by
+ * `deleteAccount` (server/utils/accounts.ts).
+ */
+export const accountDeletions = sqliteTable('account_deletions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** The deleted account's id (a random ULID; the row it pointed to is gone). */
+  userId: text('user_id').notNull(),
+  role: text('role').notNull(),
+  /** self: the person deleted their own account; admin: from Members; app: through the integrations API. */
+  via: text('via', { enum: ['self', 'admin', 'app'] }).notNull(),
+  /** Admin user id or integration app id. No foreign key: the actor may be deleted later. */
+  actorId: text('actor_id'),
+  tickets: text('tickets', { enum: ['keep', 'delete-private', 'delete'] }).notNull(),
+  /** Counts of what was removed, e.g. { tickets: 2, files: 5, conversations: 1 }. */
+  summary: text('summary', { mode: 'json' }).$type<Record<string, number>>().notNull(),
+  createdAt: createdAt(),
+})

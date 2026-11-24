@@ -126,6 +126,7 @@ const confirmOpen = computed({
                 <UBadge v-if="!app.enabled" color="neutral" variant="subtle" size="sm" label="Off" icon="i-lucide-pause" />
                 <UBadge color="neutral" variant="outline" size="sm" :icon="integrationLandingMeta[app.landing].icon" :label="integrationLandingMeta[app.landing].label" />
                 <UBadge v-if="!app.canProvision" color="neutral" variant="outline" size="sm" label="Existing accounts only" />
+                <UBadge v-if="app.canDelete" color="warning" variant="subtle" size="sm" icon="i-lucide-user-x" label="Can delete people" />
               </p>
               <p class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
                 <button type="button" class="inline-flex items-center gap-1 font-mono hover:text-default" :aria-label="`Copy the app ID of ${app.name}`" @click="copyId(app.id)">
