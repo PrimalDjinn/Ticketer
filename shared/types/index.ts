@@ -1,5 +1,5 @@
 // Types shared by the Vue app and the Nitro server (auto-imported from `shared/types`).
-import type { FIELD_TYPES, RELATION_KINDS, TASK_PRIORITIES, TASK_REPEATS, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
+import type { FIELD_TYPES, RELATION_KINDS, SIGNUP_MODES, TASK_PRIORITIES, TASK_REPEATS, TICKET_STATUSES, TICKET_URGENCIES } from '../utils/constants'
 
 export type TicketStatus = (typeof TICKET_STATUSES)[number]
 
@@ -15,6 +15,34 @@ export interface PublicUser {
 }
 
 export type UserRole = 'admin' | 'member' | 'viewer'
+export type SignupMode = (typeof SIGNUP_MODES)[number]
+
+export interface InviteDTO {
+  id: number
+  email: string
+  role: UserRole
+  invitedBy: string | null
+  createdAt: string | number | Date
+  expiresAt: string | number | Date
+  expired: boolean
+}
+
+/** Returned when an admin creates or renews an invitation; the link is only ever shown at this moment. */
+export interface InviteCreated {
+  invite: InviteDTO
+  link: string
+  emailed: boolean
+}
+
+/** What the sign-up page needs to know before showing the form. */
+export interface SignupInfo {
+  /** True until the first registered account exists; that account becomes the admin. */
+  firstAccount: boolean
+  mode: SignupMode
+  invite: { email: string; role: UserRole; invitedBy: string | null } | null
+  /** Set when an invitation token was given but cannot be used. */
+  inviteError: string | null
+}
 
 export interface AttachmentDTO {
   id: number

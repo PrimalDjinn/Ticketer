@@ -16,6 +16,8 @@ const loading = ref(false)
 const error = ref('')
 const route = useRoute()
 const { fetch: refreshSession } = useUserSession()
+const { data: signup } = await useFetch<SignupInfo>('/api/auth/signup')
+const canRegister = computed(() => !!signup.value && (signup.value.firstAccount || signup.value.mode !== 'invite'))
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
@@ -54,7 +56,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UButton type="submit" block :loading="loading" label="Sign in" />
     </UForm>
 
-    <p class="text-center text-sm text-muted">
+    <p v-if="canRegister" class="text-center text-sm text-muted">
       New here?
       <ULink to="/auth/register" class="font-medium text-primary">Create an account</ULink>
     </p>

@@ -40,6 +40,31 @@ export const passwordResets = sqliteTable('password_resets', {
   createdAt: createdAt(),
 })
 
+/** An admin's invitation to join. The link carries the token; only its hash is stored. */
+export const invites = sqliteTable(
+  'invites',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    email: text('email').notNull(),
+    role: text('role', { enum: ['admin', 'member', 'viewer'] })
+      .notNull()
+      .default('member'),
+    tokenHash: text('token_hash').notNull().unique(),
+    invitedById: text('invited_by_id').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    acceptedAt: integer('accepted_at', { mode: 'timestamp_ms' }),
+    acceptedById: text('accepted_by_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('invites_email_idx').on(t.email)],
+)
+
+/** Instance-wide settings edited by admins (key → JSON value). */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value', { mode: 'json' }).notNull(),
+})
+
 export const tickets = sqliteTable(
   'tickets',
   {
@@ -349,3 +374,4 @@ export type Project = typeof projects.$inferSelect
 export type ProjectStatus = typeof projectStatuses.$inferSelect
 export type Task = typeof tasks.$inferSelect
 export type Label = typeof labels.$inferSelect
+export type Invite = typeof invites.$inferSelect
