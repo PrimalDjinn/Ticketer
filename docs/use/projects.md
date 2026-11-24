@@ -95,6 +95,11 @@ forward by the interval. A task without dates gets a due date counted from today
 
 A project can have up to 20 fields. Removing a field deletes its values from every task when you save.
 
+## Sync with GitHub
+
+A project can be linked to a GitHub repository, so new issues become tasks, tasks become issues, and titles,
+descriptions, open or done, labels and comments stay in step. See [Sync projects with GitHub issues](/admin/github).
+
 ## Link tickets to tasks
 
 From a support ticket, admins and members select **Create task in…** and choose a project. The task carries the

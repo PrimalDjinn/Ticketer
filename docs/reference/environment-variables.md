@@ -82,6 +82,19 @@ See [Protect forms from bots](/admin/bot-protection). Each variable overrides it
 | `NUXT_CAPTCHA_SITE_KEY` | None | The provider's site key. Public. | Both |
 | `NUXT_CAPTCHA_SECRET_KEY` | None | The provider's secret key. On Cloudflare, add it as a secret. | Both |
 
+## GitHub
+
+See [Sync projects with GitHub issues](/admin/github). Each variable overrides the GitHub App stored in Settings.
+
+| Variable | Default | Description | Applies to |
+| --- | --- | --- | --- |
+| `NUXT_GITHUB_APP_ID` | Settings | The GitHub App's ID. | Both |
+| `NUXT_GITHUB_APP_SLUG` | Settings | The app's URL name, from `github.com/apps/<slug>`. | Both |
+| `NUXT_GITHUB_PRIVATE_KEY` | Settings | The app's private key (PEM). `\n` sequences are turned into line breaks. | Both |
+| `NUXT_GITHUB_WEBHOOK_SECRET` | Settings | The app's webhook secret. | Both |
+| `NUXT_GITHUB_API_URL` | `https://api.github.com` | API address, for GitHub Enterprise Server. | Both |
+| `NUXT_GITHUB_WEB_URL` | `https://github.com` | Web address, for GitHub Enterprise Server. | Both |
+
 ## Node server
 
 | Variable | Default | Description | Applies to |

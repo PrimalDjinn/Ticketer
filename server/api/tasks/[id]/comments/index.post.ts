@@ -40,5 +40,6 @@ export default defineEventHandler(async (event) => {
   // Followers (the assignee and creator among them) hear about the comment; people just mentioned already did.
   await notifyTaskFollowers(event, id, user.id, { type: 'comment', message: `${user.name} commented on ${ref}: ${task.title}`, link }, mentioned)
   await followTask(event, id, [user.id])
+  pushComment(event, comment!.id, user.name)
   return dto
 })

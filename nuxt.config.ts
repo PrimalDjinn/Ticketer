@@ -64,6 +64,16 @@ export default defineNuxtConfig({
       // Node only: SMTP connection string, e.g. smtps://user:pass@smtp.gmail.com:465
       smtpUrl: '',
     },
+    // GitHub issues sync (NUXT_GITHUB_*): a GitHub App, usually created from Settings → GitHub. Each field set here wins
+    // over the stored one. apiUrl/webUrl point at GitHub Enterprise Server when set.
+    github: {
+      appId: '',
+      appSlug: '',
+      privateKey: '', // PEM; literal \n sequences are accepted
+      webhookSecret: '',
+      apiUrl: '', // default https://api.github.com
+      webUrl: '', // default https://github.com
+    },
     // Bot protection for sign-up, password reset and visitor tickets/chats (NUXT_CAPTCHA_*): provider turnstile,
     // recaptcha (v2 checkbox) or none. Each field set here wins over Settings → Bot protection.
     captcha: {

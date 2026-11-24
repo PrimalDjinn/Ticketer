@@ -12,6 +12,7 @@ const tabs: NavigationMenuItem[] = [
   { label: 'Sign-in', icon: 'i-lucide-key-round', to: '/settings/sign-in' },
   { label: 'Bot protection', icon: 'i-lucide-shield-check', to: '/settings/bot-protection' },
   { label: 'Reminders', icon: 'i-lucide-alarm-clock', to: '/settings/reminders' },
+  { label: 'GitHub', icon: 'i-lucide-github', to: '/settings/github' },
   { label: 'Integrations', icon: 'i-lucide-plug', to: '/settings/integrations' },
 ]
 </script>

@@ -98,6 +98,8 @@ export default defineEventHandler(async (event) => {
 
   const dto = await taskDTO(id)
   publishTask(event, { type: 'task.updated', body: dto })
+  // Keep the GitHub issue in step: title, description, open/closed and labels.
+  if (activity.some((a) => ['title', 'description', 'status', 'labels'].includes(a.field))) pushTask(event, id)
 
   const link = `/projects/${project!.key}/${dto.number}`
   if (newAssignee) await followTask(event, id, [newAssignee])

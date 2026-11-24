@@ -427,8 +427,12 @@ export const taskComments = sqliteTable(
     authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
     body: text('body').notNull().default(''),
     createdAt: createdAt(),
+    /** Comments mirrored from GitHub: the GitHub comment, its author's login and link (`authorId` is null). */
+    githubCommentId: integer('github_comment_id'),
+    externalAuthor: text('external_author'),
+    externalUrl: text('external_url'),
   },
-  (t) => [index('task_comments_task_idx').on(t.taskId)],
+  (t) => [index('task_comments_task_idx').on(t.taskId), uniqueIndex('task_comments_github_idx').on(t.githubCommentId)],
 )
 
 /** Field-level history shown in the task timeline. */
@@ -629,4 +633,63 @@ export const accountDeletions = sqliteTable('account_deletions', {
   /** Counts of what was removed, e.g. { tickets: 2, files: 5, conversations: 1 }. */
   summary: text('summary', { mode: 'json' }).$type<Record<string, number>>().notNull(),
   createdAt: createdAt(),
+})
+
+// ---------------------------------------------------------------------------------------------------------------------
+// GitHub issues sync (see server/utils/github*.ts)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Accounts (users or organisations) the GitHub App is installed on. `id` is GitHub's installation id. */
+export const githubInstallations = sqliteTable('github_installations', {
+  id: integer('id').primaryKey(),
+  accountLogin: text('account_login').notNull(),
+  accountType: text('account_type').notNull().default('User'),
+  suspended: integer('suspended', { mode: 'boolean' }).notNull().default(false),
+  createdAt: createdAt(),
+})
+
+/** The repository a project syncs with (one repository per project, one project per repository) and what flows which way. */
+export const projectGithub = sqliteTable(
+  'project_github',
+  {
+    projectId: integer('project_id')
+      .primaryKey()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    installationId: integer('installation_id').notNull(),
+    /** GitHub's numeric repository id: survives renames and transfers, checked before every write. */
+    repoId: integer('repo_id').notNull(),
+    repoFullName: text('repo_full_name').notNull(),
+    /** New tasks become issues. */
+    createIssues: integer('create_issues', { mode: 'boolean' }).notNull().default(true),
+    /** New issues become tasks. */
+    importIssues: integer('import_issues', { mode: 'boolean' }).notNull().default(true),
+    commentsFromGithub: integer('comments_from_github', { mode: 'boolean' }).notNull().default(true),
+    /** Task comments are team-only, so posting them to a (possibly public) repository is opt-in. */
+    commentsToGithub: integer('comments_to_github', { mode: 'boolean' }).notNull().default(false),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('project_github_repo_idx').on(t.repoId)],
+)
+
+/** A task's GitHub issue. */
+export const taskGithub = sqliteTable(
+  'task_github',
+  {
+    taskId: integer('task_id')
+      .primaryKey()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    repoId: integer('repo_id').notNull(),
+    issueNumber: integer('issue_number').notNull(),
+    url: text('url').notNull(),
+    state: text('state', { enum: ['open', 'closed'] }).notNull().default('open'),
+    syncedAt: integer('synced_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [uniqueIndex('task_github_issue_idx').on(t.repoId, t.issueNumber)],
+)
+
+/** Webhook deliveries already handled (GitHub's X-GitHub-Delivery), so a redelivery is applied once. */
+export const githubDeliveries = sqliteTable('github_deliveries', {
+  id: text('id').primaryKey(),
+  receivedAt: createdAt(),
 })

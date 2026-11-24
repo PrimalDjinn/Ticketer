@@ -30,7 +30,7 @@ const repeatText = computed(() => `Repeats ${repeatLabel(props.task.repeat, prop
       <ProjectAssigneeMenu :task="task" :members="members" :readonly="readonly" class="mt-0.5" @assign="(id) => $emit('assign', id)" />
     </div>
 
-    <div v-if="(task.blockedByCount > 0 && !done) || task.repeat || task.priority !== 'none' || taskLabels.length || task.dueDate || task.subtaskCount || task.commentCount || task.attachmentCount" class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+    <div v-if="(task.blockedByCount > 0 && !done) || task.repeat || task.priority !== 'none' || taskLabels.length || task.dueDate || task.subtaskCount || task.commentCount || task.attachmentCount || task.github" class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
       <UTooltip v-if="task.blockedByCount > 0 && !done" :text="blockedText">
         <span class="inline-flex items-center gap-0.5 text-error">
           <UIcon name="i-lucide-lock" class="size-3.5" />
@@ -72,6 +72,9 @@ const repeatText = computed(() => `Repeats ${repeatLabel(props.task.repeat, prop
       <span v-if="task.commentCount" class="inline-flex items-center gap-1" :title="`${task.commentCount} comments`">
         <UIcon name="i-lucide-message-square" class="size-3.5" />
         {{ task.commentCount }}
+      </span>
+      <span v-if="task.github" class="inline-flex items-center gap-0.5" :title="`GitHub issue #${task.github.number} (${task.github.state})`">
+        <UIcon name="i-lucide-github" class="size-3.5" />{{ task.github.number }}
       </span>
       <span v-if="task.attachmentCount" class="inline-flex items-center gap-1" :title="`${task.attachmentCount} attachments`">
         <UIcon name="i-lucide-paperclip" class="size-3.5" />

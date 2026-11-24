@@ -60,6 +60,9 @@ function onPosted(comment: CommentDTO) {
         <div class="flex flex-wrap items-baseline gap-x-2">
           <span class="text-sm font-medium text-highlighted">{{ comment.authorName }}</span>
           <UBadge v-if="teamBadges && comment.authorIsInternal" label="Team" size="sm" variant="soft" color="primary" icon="i-lucide-badge-check" class="self-center" />
+          <ULink v-if="comment.external" :to="comment.external.url ?? undefined" target="_blank" class="self-center" :aria-label="`${comment.authorName}'s comment on GitHub`">
+            <UBadge label="via GitHub" size="sm" variant="soft" color="neutral" icon="i-lucide-github" />
+          </ULink>
           <span v-if="comment.internal" class="flex items-center gap-1 self-center text-xs font-medium text-amber-700 dark:text-amber-400">
             <UIcon name="i-lucide-lock" class="size-3" />
             Internal note

@@ -38,6 +38,7 @@ export default defineConfig({
           { text: 'Protect forms from bots', link: '/admin/bot-protection' },
           { text: 'Set up due-date reminders', link: '/admin/reminders' },
           { text: 'Delete accounts and personal data', link: '/admin/delete-accounts' },
+          { text: 'Sync projects with GitHub issues', link: '/admin/github' },
           { text: 'Connect an app', link: '/admin/integrations' },
         ],
       },
