@@ -346,10 +346,33 @@ onRealtime('task.followers', ({ taskId, followers }) => {
   if (task.value && taskId === task.value.id) task.value.followers = followers
 })
 
+// --- GitHub ---------------------------------------------------------------------------------------------------------
+const githubRepo = computed(() => board.value?.project.githubRepo ?? null)
+const creatingIssue = ref(false)
+async function createIssue() {
+  const current = task.value
+  if (!current) return
+  creatingIssue.value = true
+  try {
+    const updated = await $fetch<TaskDTO>(`/api/tasks/${current.id}/github`, { method: 'POST' })
+    current.github = updated.github
+    toast.add({ title: `Created issue #${updated.github?.number} on GitHub`, icon: 'i-lucide-github', color: 'success' })
+  } catch (e) {
+    toast.add({ color: 'error', title: errorMessage(e, 'Could not create the GitHub issue') })
+  } finally {
+    creatingIssue.value = false
+  }
+}
+
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
     { label: 'Copy link', icon: 'i-lucide-link', onSelect: copyLink },
     ...(props.compact ? [{ label: 'Open full page', icon: 'i-lucide-maximize-2', to: fullLink.value }] : []),
+    ...(task.value?.github
+      ? [{ label: `Open issue #${task.value.github.number} on GitHub`, icon: 'i-lucide-github', to: task.value.github.url, target: '_blank' }]
+      : githubRepo.value && canEdit.value
+        ? [{ label: `Create issue in ${githubRepo.value}`, icon: 'i-lucide-github', onSelect: createIssue }]
+        : []),
   ],
   ...(canEdit.value ? [[{ label: 'Delete task', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => (confirmDelete.value = true) }]] : []),
 ])
@@ -389,6 +412,19 @@ function openInPlace(event: MouseEvent, id: number) {
           <span class="size-1.5 rounded-full" :class="color(projectColor).dot" />
           {{ task.ref }}
         </NuxtLink>
+        <UTooltip v-if="task.github" :text="`GitHub issue #${task.github.number} (${task.github.state}) in ${githubRepo ?? 'the linked repository'}`">
+          <ULink
+            :to="task.github.url"
+            target="_blank"
+            class="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs ring ring-default ring-inset hover:bg-elevated"
+            :class="task.github.state === 'open' ? 'text-success' : 'text-muted'"
+          >
+            <UIcon name="i-lucide-github" class="size-3.5" />#{{ task.github.number }}
+          </ULink>
+        </UTooltip>
+        <UTooltip v-else-if="creatingIssue" text="Creating the GitHub issue…">
+          <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin text-muted" />
+        </UTooltip>
         <UTooltip v-if="task.repeat" :text="`Repeats: ${repeatText.toLowerCase()}`">
           <span class="inline-flex shrink-0 items-center text-primary" tabindex="0" :aria-label="`Repeats ${repeatText.toLowerCase()}`">
             <UIcon name="i-lucide-repeat" class="size-4" />

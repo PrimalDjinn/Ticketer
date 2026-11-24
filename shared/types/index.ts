@@ -91,6 +91,8 @@ export interface CommentDTO {
   body: string
   createdAt: string | number | Date
   attachments: AttachmentDTO[]
+  /** Mirrored from elsewhere (a GitHub issue comment): `authorName` is the GitHub login. */
+  external?: { source: 'github'; url: string | null } | null
 }
 
 export interface TicketDetailDTO extends TicketDTO {
@@ -272,6 +274,8 @@ export interface ProjectDTO {
   /** Open (not done) / total task counts, for the sidebar and project list. */
   openCount: number
   taskCount: number
+  /** "owner/repo" when the project syncs with a GitHub repository. */
+  githubRepo: string | null
 }
 
 /** A task as shown on boards and lists. */
@@ -305,6 +309,8 @@ export interface TaskDTO {
   createdAt: string | number | Date
   updatedAt: string | number | Date | null
   completedAt: string | number | Date | null
+  /** The linked GitHub issue, when the project syncs with a repository. */
+  github: { number: number; url: string; state: 'open' | 'closed' } | null
 }
 
 export interface TaskActivityDTO {

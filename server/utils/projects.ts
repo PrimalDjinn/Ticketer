@@ -44,7 +44,11 @@ export async function fieldsOf(projectIds: number[]) {
 
 export async function toProjectDTOs(rows: ProjectRow[]): Promise<ProjectDTO[]> {
   const ids = rows.map((r) => r.id)
-  const [statuses, fields] = await Promise.all([statusesOf(ids), fieldsOf(ids)])
+  const [statuses, fields, github] = await Promise.all([
+    statusesOf(ids),
+    fieldsOf(ids),
+    ids.length ? db.select({ projectId: schema.projectGithub.projectId, repo: schema.projectGithub.repoFullName }).from(schema.projectGithub).where(inArray(schema.projectGithub.projectId, ids)) : [],
+  ])
   const counts = ids.length
     ? await db
         .select({ projectId: schema.tasks.projectId, done: schema.projectStatuses.isDone, value: count() })
@@ -67,6 +71,7 @@ export async function toProjectDTOs(rows: ProjectRow[]): Promise<ProjectDTO[]> {
       fields: fields.get(p.id) ?? [],
       openCount: mine.filter((c) => !c.done).reduce((n, c) => n + c.value, 0),
       taskCount: mine.reduce((n, c) => n + c.value, 0),
+      githubRepo: github.find((g) => g.projectId === p.id)?.repo ?? null,
     }
   })
 }
@@ -88,7 +93,7 @@ export async function toTaskDTOs(rows: TaskRow[]): Promise<TaskDTO[]> {
   if (!rows.length) return []
   const ids = rows.map((r) => r.id)
   const projectIds = [...new Set(rows.map((r) => r.projectId))]
-  const [projectRows, labelRows, subtasks, commentCounts, attachmentCounts, fieldRows, blockers] = await Promise.all([
+  const [projectRows, labelRows, subtasks, commentCounts, attachmentCounts, fieldRows, blockers, github] = await Promise.all([
     db.select({ id: schema.projects.id, key: schema.projects.key }).from(schema.projects).where(inArray(schema.projects.id, projectIds)),
     db.select().from(schema.taskLabels).where(inArray(schema.taskLabels.taskId, ids)),
     db
@@ -116,6 +121,7 @@ export async function toTaskDTOs(rows: TaskRow[]): Promise<TaskDTO[]> {
       .innerJoin(schema.projectStatuses, eq(schema.tasks.statusId, schema.projectStatuses.id))
       .where(and(inArray(schema.taskRelations.relatedTaskId, ids), eq(schema.taskRelations.type, 'blocks'), eq(schema.projectStatuses.isDone, false)))
       .groupBy(schema.taskRelations.relatedTaskId),
+    githubForTasks(ids),
   ])
   const keys = new Map(projectRows.map((p) => [p.id, p.key]))
   return rows.map((t) => {
@@ -146,6 +152,7 @@ export async function toTaskDTOs(rows: TaskRow[]): Promise<TaskDTO[]> {
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       completedAt: t.completedAt,
+      github: github.get(t.id) ?? null,
     }
   })
 }
@@ -165,7 +172,8 @@ export async function toTaskCommentDTOs(rows: (typeof schema.taskComments.$infer
     ticketId: c.taskId,
     parentId: c.parentId,
     authorId: c.authorId,
-    authorName: c.authorId ? (names.get(c.authorId) ?? 'Deleted user') : 'Deleted user',
+    authorName: c.externalAuthor ?? (c.authorId ? (names.get(c.authorId) ?? 'Deleted user') : 'Deleted user'),
+    external: c.externalAuthor ? { source: 'github' as const, url: c.externalUrl } : null,
     // Task comments are only ever seen by internal people.
     authorIsInternal: true,
     internal: false,
@@ -210,7 +218,7 @@ export async function taskDetail(task: TaskRow): Promise<TaskDetailDTO> {
   }
 }
 
-export async function recordActivity(taskId: number, actorId: string, entries: { field: string; from?: string | null; to?: string | null }[]) {
+export async function recordActivity(taskId: number, actorId: string | null, entries: { field: string; from?: string | null; to?: string | null }[]) {
   if (!entries.length) return
   await db.insert(schema.taskActivity).values(
     entries.map((e) => ({ taskId, actorId, field: e.field, fromValue: e.from ?? null, toValue: e.to ?? null })),
@@ -289,12 +297,15 @@ export interface NewTaskInput {
   fields?: Record<string, unknown>
   /** Enforce the project's required custom fields (the full create form does; quick-add from a column does not). */
   requireFields?: boolean
+  /** Created from a GitHub issue: don't create an issue for it in turn. */
+  fromGithub?: boolean
 }
 
 /** Creates a task (numbered within its project), records activity, publishes and notifies the assignee. */
 export async function createTask(
   event: H3Event,
-  user: { id: string; name: string },
+  /** Who creates it; `id` is null for tasks that come from GitHub. */
+  user: { id: string | null; name: string },
   project: typeof schema.projects.$inferSelect,
   input: NewTaskInput,
 ) {
@@ -365,6 +376,7 @@ export async function createTask(
   const dto = await taskDTO(task!.id)
   publishTask(event, { type: 'task.created', body: dto })
   await followTask(event, task!.id, [user.id, task!.assigneeId])
+  if (!input.fromGithub) pushTask(event, task!.id, { create: true })
   if (task!.assigneeId && task!.assigneeId !== user.id) {
     await notify(event, task!.assigneeId, { type: 'task', message: `${user.name} assigned you ${dto.ref}: ${task!.title}`, link: `/projects/${project.key}/${task!.number}` })
   }

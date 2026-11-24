@@ -11,12 +11,13 @@ const { user } = useUserSession()
 const toast = useToast()
 const isAdmin = computed(() => user.value?.role === 'admin')
 
-const tab = ref<'general' | 'workflow' | 'fields' | 'labels'>('general')
+const tab = ref<'general' | 'workflow' | 'fields' | 'labels' | 'github'>('general')
 const tabs: TabsItem[] = [
   { label: 'General', value: 'general', icon: 'i-lucide-settings-2' },
   { label: 'Workflow', value: 'workflow', icon: 'i-lucide-columns-3' },
   { label: 'Fields', value: 'fields', icon: 'i-lucide-text-cursor-input' },
   { label: 'Labels', value: 'labels', icon: 'i-lucide-tags' },
+  { label: 'GitHub', value: 'github', icon: 'i-lucide-github' },
 ]
 
 // --- general ------------------------------------------------------------------------------------------------------
@@ -350,6 +351,9 @@ watch(
 
       <!-- Custom fields -->
       <!-- v-show keeps unsaved field edits when switching tabs. -->
+      <div v-if="tab === 'github'" class="p-4 sm:p-6">
+        <ProjectGithubSettings :project="project" />
+      </div>
       <ProjectFieldsSettings v-show="tab === 'fields'" :key="open ? 'open' : 'closed'" :project="project" @updated="(p) => emit('updated', p)" />
 
       <!-- Labels -->

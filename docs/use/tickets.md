@@ -43,16 +43,17 @@ Who can reply:
 | Other external accounts | On public tickets |
 | Guests | On tickets they opened |
 
-## Write an internal note
+## Write an internal note or a reply
 
-Admins and members can write notes that only the team sees.
+For admins and members, the comment box starts on **Internal note**: a note only the team sees.
 
-1. In the comment box, switch from **Reply** to **Internal note**.
-2. Write the note and select **Add note**.
+- To write a note, type it and select **Add note**. People outside the team never receive notes: not in the page, not
+  in notifications, and not as files. Replies inside a note's thread are internal too, and only people on the team can
+  be mentioned in a note.
+- To answer the person who reported the ticket, select **Reply** first. The box turns amber and says who will see it:
+  the reporter and anyone following, or everyone when the issue is public. Then select **Reply**.
 
-Internal notes have an amber background. People outside the team never receive them: not in the page, not in
-notifications, and not as files. Replies inside an internal note's thread are internal too. Only people on the team can
-be mentioned in an internal note.
+After you post, the box goes back to **Internal note**.
 
 ## Follow a ticket
 
@@ -84,7 +85,8 @@ Ticketer also changes the status for you when someone replies (internal notes do
 
 Admins and members can create a task from a ticket:
 
-1. On the ticket, under **Tasks**, select **Create task in…**.
+1. On the ticket, under **Tasks**, select **Create task in…**. In the **Tickets** list, use the folder button at the
+   end of the ticket's row instead.
 2. Choose a project.
 
 The task gets the ticket's title and description, followed by a line `— From support ticket #` and the ticket's short

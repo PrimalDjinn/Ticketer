@@ -4,12 +4,13 @@ definePageMeta({ middleware: ['auth', 'admin'] })
 
 type Mail = { transport: 'cloudflare' | 'smtp' | 'none'; from: { value: string } }
 const { site } = useSite()
-const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }] = await Promise.all([
+const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }, { data: github }] = await Promise.all([
   useFetch<Mail>('/api/settings/mail'),
   useFetch<{ password: boolean; oidc: { name: string } | null }>('/api/auth/providers'),
   useFetch<{ signup: SignupMode }>('/api/settings'),
   useFetch<{ enabled: boolean; hour: number; timeZone: string }>('/api/settings/reminders'),
   useFetch<{ provider: string; active: boolean; problem: string | null }>('/api/settings/captcha'),
+  useFetch<{ appId: string; slug: string; problem: string | null; installations: unknown[] }>('/api/settings/github'),
 ])
 
 const signupLabel: Record<SignupMode, string> = {
@@ -77,6 +78,17 @@ const rows = computed(() => [
       : reminders.value.enabled
         ? `Every day at ${String(reminders.value.hour).padStart(2, '0')}:00 (${reminders.value.timeZone})`
         : 'Off',
+  },
+  {
+    icon: 'i-lucide-github',
+    title: 'GitHub',
+    to: '/settings/github',
+    ok: !!github.value?.appId && !github.value.problem,
+    status: !github.value?.appId
+      ? 'Not set up — sync project tasks with GitHub issues'
+      : github.value.problem
+        ? github.value.problem
+        : `${github.value.slug} · installed on ${github.value.installations.length} ${github.value.installations.length === 1 ? 'account' : 'accounts'}`,
   },
   {
     icon: 'i-lucide-plug',
