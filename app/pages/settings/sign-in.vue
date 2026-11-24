@@ -2,7 +2,7 @@
 import { z } from 'zod'
 
 definePageMeta({ middleware: ['auth', 'admin'] })
-useSeoMeta({ title: 'Sign-in · Settings · Ticketer' })
+useSeoMeta({ title: 'Sign-in · Settings' })
 
 const toast = useToast()
 const { data: settings, refresh } = await useFetch<OidcSettingsDTO>('/api/settings/oidc', { deep: true })

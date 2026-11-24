@@ -10,7 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
-useSeoMeta({ title: () => (internal.value ? 'Tickets · Ticketer' : 'My tickets · Ticketer') })
+useSeoMeta({ title: () => (internal.value ? 'Tickets' : 'My tickets') })
 
 // URL is the source of truth for filters, so every view is linkable.
 const filtersSchema = z.object({

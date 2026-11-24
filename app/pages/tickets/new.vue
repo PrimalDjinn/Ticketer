@@ -12,7 +12,7 @@ definePageMeta({
     },
   ],
 })
-useSeoMeta({ title: 'New ticket · Ticketer' })
+useSeoMeta({ title: 'New ticket' })
 
 const toast = useToast()
 const { staff, registered } = useAccess()
@@ -60,7 +60,11 @@ const urgencyOptions = [
   { value: 'Emergency', label: 'Emergency', description: 'Something is down for everyone' },
 ]
 
-const ready = computed(() => !!title.value.trim() && !!info.value.trim())
+// Visitors without a session get a guest account with their first ticket: that's where the bot check applies.
+const { loggedIn } = useUserSession()
+const captcha = useCaptcha(() => !loggedIn.value)
+const { widget: captchaWidget, token: captchaToken } = captcha
+const ready = computed(() => !!title.value.trim() && !!info.value.trim() && captcha.ready.value)
 
 async function submit() {
   if (!ready.value) return
@@ -77,7 +81,7 @@ async function submit() {
     if (staff.value && makePublic.value) form.set('visibility', 'public')
     form.set('urgency', urgency.value)
     for (const file of files.value.slice(0, UPLOAD_LIMITS.maxFiles)) form.append('files', file)
-    const ticket = await $fetch<TicketDTO>('/api/tickets', { method: 'POST', body: form })
+    const ticket = await $fetch<TicketDTO>('/api/tickets', { method: 'POST', body: form, headers: captcha.headers() })
     if (!registered.value) {
       await refreshSession()
       submitted.value = ticket
@@ -87,6 +91,7 @@ async function submit() {
     await navigateTo(`/tickets/${ticket.id}`)
   } catch (e) {
     toast.add({ color: 'error', title: errorMessage(e, 'Could not open the ticket') })
+    captcha.spent()
   } finally {
     loading.value = false
   }
@@ -139,6 +144,7 @@ async function submit() {
           />
         </div>
 
+        <CaptchaWidget v-if="captcha.required.value" ref="captchaWidget" v-model="captchaToken" />
         <div class="flex justify-end gap-2 border-t border-default pt-6">
           <UButton :to="registered ? '/' : '/issues'" color="neutral" variant="ghost" label="Cancel" />
           <UButton type="submit" :loading="loading" :disabled="!ready" :icon="makePublic && staff ? 'i-lucide-globe' : 'i-lucide-send'" :label="makePublic && staff ? 'Publish' : 'Open ticket'" />

@@ -11,14 +11,13 @@ const { items: notifications } = useNotifications()
 type TicketPage = { items: TicketDTO[]; total: number; page: number; pageSize: number }
 const emptyPage = (): TicketPage => ({ items: [], total: 0, page: 1, pageSize: 5 })
 
-const [{ data: mine, refresh: refreshMine }, { data: publicIssues, refresh: refreshPublic }, { data: conversationPage, refresh: refreshConversations }] = await Promise.all([
+const [{ data: mine, refresh: refreshMine }, { data: conversationPage, refresh: refreshConversations }] = await Promise.all([
   useFetch<TicketPage>('/api/tickets', { query: { scope: 'mine', pageSize: 5 }, default: emptyPage }),
-  useFetch<TicketPage>('/api/tickets', { query: { scope: 'public', pageSize: 5 }, default: emptyPage }),
   useFetch<ConversationPage>('/api/conversations', { query: { limit: 3 }, default: () => ({ items: [], total: 0, page: 1, pageSize: 3 }) }),
 ])
 const conversations = computed(() => conversationPage.value.items)
 
-const refreshTickets = useDebounceFn(() => Promise.all([refreshMine(), refreshPublic()]), 400)
+const refreshTickets = useDebounceFn(() => refreshMine(), 400)
 onRealtime('ticket.created', refreshTickets)
 onRealtime('ticket.updated', refreshTickets)
 onRealtime('ticket.deleted', refreshTickets)
@@ -135,23 +134,7 @@ const greeting = computed(() => {
               </ul>
             </UCard>
 
-            <UCard :ui="{ body: 'p-0 sm:p-0' }">
-              <template #header>
-                <div class="flex items-center justify-between">
-                  <h2 class="font-semibold text-highlighted">Latest public issues</h2>
-                  <UButton to="/issues" variant="link" color="neutral" trailing-icon="i-lucide-arrow-right" label="All" size="sm" />
-                </div>
-              </template>
-              <p v-if="!publicIssues.items.length" class="px-4 py-6 text-center text-sm text-muted sm:px-6">Nothing reported publicly right now.</p>
-              <ul v-else class="divide-y divide-default">
-                <li v-for="ticket in publicIssues.items" :key="ticket.id">
-                  <NuxtLink :to="`/issues/${ticket.reference}`" class="flex items-center gap-3 px-4 py-2.5 transition hover:bg-elevated/50 sm:px-6">
-                    <span class="min-w-0 flex-1 truncate text-sm text-default">{{ ticket.title }}</span>
-                    <TicketStatusBadge :status="ticket.status" />
-                  </NuxtLink>
-                </li>
-              </ul>
-            </UCard>
+            <HomePublicIssues title="Latest public issues" />
           </div>
         </div>
       </div>

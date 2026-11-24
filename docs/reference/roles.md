@@ -93,6 +93,10 @@ copies are on by default for external accounts and off for the team. See [Get no
 | Ticket assigned | The assignee |
 | Mention | The person mentioned, if they can read the comment |
 | Reply in a conversation | The customer (team replies) or the assignee (customer messages) |
+| Task assigned | The new assignee |
+| Comment on a task, task moved, completed or reassigned | The task's followers |
+| Task due tomorrow or today | The assignee, or the followers when nobody is assigned, unless they turned reminders off |
+| Issue made public | Everyone with Ticketer open sees a message in the corner; the dashboards update by themselves |
 
 ## What's next
 

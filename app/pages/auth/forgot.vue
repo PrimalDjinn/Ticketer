@@ -3,19 +3,26 @@ import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
 definePageMeta({ layout: 'auth' })
-useSeoMeta({ title: 'Reset password · Ticketer' })
+useSeoMeta({ title: 'Reset password' })
 
 const schema = z.object({ email: z.email('Enter a valid email') })
 type Schema = z.output<typeof schema>
 const state = reactive<Partial<Schema>>({ email: '' })
 const loading = ref(false)
 const sent = ref(false)
+const error = ref('')
+const captcha = useCaptcha()
+const { widget: captchaWidget, token: captchaToken } = captcha
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
+  error.value = ''
   try {
-    await $fetch('/api/auth/forgot', { method: 'POST', body: event.data })
+    await $fetch('/api/auth/forgot', { method: 'POST', body: event.data, headers: captcha.headers() })
     sent.value = true
+  } catch (e) {
+    error.value = errorMessage(e, 'Could not send the link')
+    captcha.spent()
   } finally {
     loading.value = false
   }
@@ -41,7 +48,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       <UFormField label="Email" name="email">
         <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" autofocus />
       </UFormField>
-      <UButton type="submit" block :loading="loading" label="Send reset link" />
+      <CaptchaWidget ref="captchaWidget" v-model="captchaToken" />
+      <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :title="error" />
+      <UButton type="submit" block :loading="loading" :disabled="!captcha.ready.value" label="Send reset link" />
     </UForm>
 
     <p class="text-center text-sm text-muted">

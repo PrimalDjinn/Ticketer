@@ -3,7 +3,6 @@ import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 
 definePageMeta({ layout: 'public' })
 
-const appName = useRuntimeConfig().public.appName || 'Ticketer'
 const route = useRoute()
 const toast = useToast()
 const reference = computed(() => String(route.params.reference))
@@ -13,13 +12,15 @@ if (error.value || !issue.value) {
   throw createError({ status: error.value?.statusCode ?? 404, message: 'This issue does not exist or is no longer public', fatal: true })
 }
 
-// Live-ish: refresh every 30 seconds while the tab is visible.
+// Live-ish: refresh every 30 seconds while the tab is visible, and at once when the issue changes.
 const visibility = useDocumentVisibility()
 useIntervalFn(() => visibility.value === 'visible' && refresh(), 30_000)
+onRealtime('issue.updated', (changed) => changed.reference === reference.value && refresh())
+onRealtime('issue.removed', (gone) => gone.reference === reference.value && refresh())
 
 const description = computed(() => issue.value?.excerpt.slice(0, 200) ?? '')
 useSeoMeta({
-  title: () => `${issue.value?.title ?? 'Issue'} · ${appName}`,
+  title: () => issue.value?.title ?? 'Issue',
   description,
   ogTitle: () => issue.value?.title ?? 'Issue',
   ogDescription: description,

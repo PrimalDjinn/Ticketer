@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import { useDocumentVisibility, useIntervalFn, watchDebounced } from '@vueuse/core'
+import { watchDebounced } from '@vueuse/core'
 
 definePageMeta({ layout: 'public' })
 
-const appName = useRuntimeConfig().public.appName || 'Ticketer'
+const { site } = useSite()
 const route = useRoute()
 const router = useRouter()
 
@@ -27,22 +27,21 @@ function setFilters(patch: Partial<z.input<typeof filtersSchema>>) {
 const searchText = ref(filters.value.q ?? '')
 watchDebounced(searchText, (q) => setFilters({ q: q.trim() || undefined }), { debounce: 350 })
 
-const { data: overview } = await usePublicOverview()
+const { data: overview, refresh: refreshOverview } = await usePublicOverview()
 const pageSize = 20
 const { data, status, refresh } = await useFetch<PublicTicketPage>('/api/public/tickets', {
   query: computed(() => ({ ...filters.value, pageSize })),
   default: () => ({ items: [], total: 0, page: 1, pageSize }),
 })
 
-// Keep the list fresh while someone is looking at it.
-const visibility = useDocumentVisibility()
-useIntervalFn(() => visibility.value === 'visible' && refresh(), 30_000)
+// Live: realtime for people with a session, a refresh every minute for anonymous visitors.
+useLivePublicIssues(() => Promise.all([refresh(), refreshOverview()]))
 
 useSeoMeta({
-  title: () => `Issues · ${appName}`,
-  description: `Known issues, announcements and their status from the ${appName} team.`,
-  ogTitle: () => `Issues · ${appName}`,
-  ogDescription: `Known issues, announcements and their status from the ${appName} team.`,
+  title: 'Status and known issues',
+  description: () => `Known issues, announcements and their status from the ${site.value.name} team.`,
+  ogTitle: () => `Status and known issues · ${site.value.name}`,
+  ogDescription: () => `Known issues, announcements and their status from the ${site.value.name} team.`,
   ogType: 'website',
 })
 

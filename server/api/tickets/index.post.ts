@@ -42,6 +42,7 @@ export default defineEventHandler(async (event) => {
   }
   await watchTicket(ticket!.id, user.id)
 
+  if (ticket!.visibility === 'public') await broadcastPublicIssue(event, ticket!, 'published', user.id)
   await broadcastTicket(event, ticket!, 'ticket.created')
   const what = input.urgency === 'Default' ? 'a ticket' : `an ${input.urgency.toLowerCase()} ticket`
   await notify(

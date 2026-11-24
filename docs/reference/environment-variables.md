@@ -64,7 +64,23 @@ Each variable pins one field in **Settings** > **Sign-in**. See [Set up single s
 
 | Variable | Default | Description | Applies to |
 | --- | --- | --- | --- |
-| `NUXT_PUBLIC_APP_NAME` | `Ticketer` | Name in the header and footer of the public pages (`/issues`, the report form for visitors) and in public issue page titles. | Both |
+| `NUXT_PUBLIC_APP_NAME` | The **Name** in Settings → Branding, else `Ticketer` | Name shown in the app, on the public pages, in page titles, push notifications and emails. Overrides **Name** in Settings. See [Brand your site](/admin/branding). | Both |
+
+## Site address
+
+| Variable | Default | Description | Applies to |
+| --- | --- | --- | --- |
+| `NUXT_SITE_URL` | The address the team last opened Ticketer at | Public address, such as `https://tickets.example.com`. Used for links in emails sent on a schedule, such as due-date reminders, and for the logo in emails. | Both |
+
+## Bot protection
+
+See [Protect forms from bots](/admin/bot-protection). Each variable overrides its field in Settings.
+
+| Variable | Default | Description | Applies to |
+| --- | --- | --- | --- |
+| `NUXT_CAPTCHA_PROVIDER` | Settings, else off | `turnstile`, `recaptcha` (v2 checkbox) or `none`. | Both |
+| `NUXT_CAPTCHA_SITE_KEY` | None | The provider's site key. Public. | Both |
+| `NUXT_CAPTCHA_SECRET_KEY` | None | The provider's secret key. On Cloudflare, add it as a secret. | Both |
 
 ## Node server
 

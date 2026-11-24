@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ middleware: ['auth', 'internal'] })
-useSeoMeta({ title: 'My tasks · Ticketer' })
+useSeoMeta({ title: 'My tasks' })
 
 const { user } = useUserSession()
 const { data, refresh } = await useFetch('/api/tasks/mine', {

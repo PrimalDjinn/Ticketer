@@ -6,6 +6,7 @@ const body = z.object({ email: z.string().trim().toLowerCase() })
 
 export default defineEventHandler(async (event) => {
   const { email } = await readValidatedBody(event, body.parse)
+  await requireCaptcha(event)
   const user = await db.query.users.findFirst({ where: eq(schema.users.email, email) })
 
   // Always answer the same way so the endpoint cannot be used to discover accounts.
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
     })
     const link = `${siteOrigin(event)}/auth/reset/${token}`
-    const sending = sendMail(event, { to: email, subject: `Reset your ${useRuntimeConfig(event).public.appName || 'Ticketer'} password`, ...(await passwordResetMail(link)) }).catch(
+    const sending = sendMail(event, { to: email, subject: `Reset your ${brandName(await readBranding(), event)} password`, ...(await passwordResetMail(link)) }).catch(
       (error) => useLogger('mail').error('password reset mail failed', error),
     )
     event.waitUntil(sending)

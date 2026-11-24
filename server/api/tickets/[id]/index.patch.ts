@@ -45,6 +45,7 @@ export default defineEventHandler(async (event) => {
   const [updated] = await db.update(schema.tickets).set({ ...patch, updatedAt: now }).where(eq(schema.tickets.id, id)).returning()
   // Whoever handles the ticket follows it.
   if (patch.assigneeId) await watchTicket(id, patch.assigneeId)
+  if (patch.visibility) await broadcastPublicIssue(event, updated!, patch.visibility === 'public' ? 'published' : 'removed', staff.id)
   await broadcastTicket(event, updated!, 'ticket.updated')
 
   // Followers who can (still) see the ticket hear about status and visibility changes; never the person acting.

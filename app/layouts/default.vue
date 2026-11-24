@@ -131,17 +131,17 @@ async function signOut() {
   await navigateTo('/auth/login')
 }
 
+
+// A toast whenever an issue is made public.
+useNewPublicIssueToasts()
 </script>
 
 <template>
   <UDashboardGroup unit="rem">
     <UDashboardSidebar collapsible resizable class="bg-elevated/25" :ui="{ footer: 'lg:border-t lg:border-default' }">
       <template #header="{ collapsed }">
-        <NuxtLink to="/" class="flex items-center gap-2 px-1 font-semibold text-highlighted">
-          <span class="grid size-8 place-items-center rounded-lg bg-primary text-inverted">
-            <UIcon name="i-lucide-ticket-check" class="size-5" />
-          </span>
-          <span v-if="!collapsed" class="text-lg tracking-tight">Ticketer</span>
+        <NuxtLink to="/" class="flex min-w-0 items-center px-1 font-semibold text-highlighted">
+          <BrandMark :hide-name="collapsed" />
         </NuxtLink>
       </template>
 

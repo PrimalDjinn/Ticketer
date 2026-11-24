@@ -7,7 +7,7 @@ import { useDebounceFn, watchDebounced } from '@vueuse/core'
  * close and turn one into a ticket; viewers read along. The selected conversation lives in the URL (`?c=<id>`).
  */
 definePageMeta({ middleware: ['auth', 'internal'] })
-useSeoMeta({ title: 'Conversations · Ticketer' })
+useSeoMeta({ title: 'Conversations' })
 
 const route = useRoute()
 const router = useRouter()

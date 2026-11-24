@@ -60,6 +60,19 @@ records every change.
 
 To assign a task quickly, use the assignee menu on a board card or list row, or press `I` with the task open.
 
+### Follow a task
+
+Followers are notified when someone comments on the task, moves it to another column, completes it, or reassigns it.
+They don't hear about their own changes.
+
+- The person who creates a task, its assignee, and anyone who comments follow it automatically.
+- To follow any task, select **Follow** at the top of the task. Select **Following** to stop.
+- **Followers** in the task's details lists who follows it. Point to it to see their names.
+
+The assignee also gets **assigned you** when they're given the task, and a reminder before it's due. See
+[Set up due-date reminders](/admin/reminders). When a repeating task creates its next occurrence, the followers carry
+over.
+
 ### Link related tasks
 
 In a task, select **Add relation**, choose **Blocked by**, **Blocks** or **Relates to**, and search for the other task

@@ -76,6 +76,10 @@ Without Docker: `pnpm build:node`, then
 Mail for password resets: set `NUXT_MAIL_FROM`, plus `NUXT_MAIL_SMTP_URL` on Node. Without them, reset links are
 written to the server log.
 
+Branding (name, logo, colour), bot protection (Cloudflare Turnstile or Google reCAPTCHA) and due-date reminder times
+are set in **Settings**; `NUXT_PUBLIC_APP_NAME` and `NUXT_CAPTCHA_*` pin them from the environment. See `.env.example`
+and the [docs](https://primaldjinn.github.io/Ticketer/).
+
 ## Deploy to Cloudflare
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/PrimalDjinn/Ticketer)

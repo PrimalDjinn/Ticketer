@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** Your account: who you are here, and deleting your account and data. */
 definePageMeta({ middleware: 'auth' })
-useSeoMeta({ title: 'Account · Ticketer' })
+useSeoMeta({ title: 'Account' })
 
 interface AccountView {
   user: PublicUser

@@ -64,6 +64,13 @@ export default defineNuxtConfig({
       // Node only: SMTP connection string, e.g. smtps://user:pass@smtp.gmail.com:465
       smtpUrl: '',
     },
+    // Bot protection for sign-up, password reset and visitor tickets/chats (NUXT_CAPTCHA_*): provider turnstile,
+    // recaptcha (v2 checkbox) or none. Each field set here wins over Settings → Bot protection.
+    captcha: {
+      provider: '',
+      siteKey: '',
+      secretKey: '',
+    },
     // Single sign-on with any OpenID Connect provider (Authentik, Keycloak, Entra ID, Google…), NUXT_OIDC_*. Each field
     // set here wins over Settings → Sign-in, where admins can configure the rest. Empty = not pinned. See the README.
     oidc: {
@@ -80,7 +87,8 @@ export default defineNuxtConfig({
       redirectUrl: '', // only behind proxies that hide the public origin: https://tickets.example.com/auth/oidc/callback
     },
     public: {
-      appName: 'Ticketer',
+      // NUXT_PUBLIC_APP_NAME: the name shown everywhere. Empty = Settings → Branding ("Ticketer" until set there).
+      appName: '',
     },
   },
 

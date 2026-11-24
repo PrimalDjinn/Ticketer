@@ -268,10 +268,22 @@ export async function publishToTicket(
 }
 
 export async function broadcastTicket(event: H3Event, ticket: TicketRow, type: 'ticket.created' | 'ticket.updated') {
+  if (ticket.visibility === 'public') await broadcastPublicIssue(event, ticket, 'updated')
   const names = await namesFor([ticket.creatorId, ticket.assigneeId])
   const dto = (viewer?: TicketViewer) =>
     toTicketDTO(ticket, ticket.creatorId ? names.get(ticket.creatorId) : null, ticket.assigneeId ? names.get(ticket.assigneeId) : null, viewer)
   await publishToTicket(event, ticket, { type, body: dto() }, (userId) => ({ type, body: dto({ id: userId, role: 'external', isGuest: false }) }))
+}
+
+/**
+ * Public issues to everyone with the site open (the team, outside people and guests), so dashboards and the issues
+ * page update live. Carries only what the public issue page shows.
+ */
+export async function broadcastPublicIssue(event: H3Event, ticket: TicketRow, change: 'published' | 'updated' | 'removed', actorId: string | null = null) {
+  if (change === 'removed') return publish(event, channels.all, { type: 'issue.removed', body: { reference: ticket.reference } })
+  const [dto] = await toPublicTicketDTOs([ticket])
+  if (change === 'published') publish(event, channels.all, { type: 'issue.published', body: { ...dto!, actorId } })
+  else publish(event, channels.all, { type: 'issue.updated', body: dto! })
 }
 
 /** A new or deleted comment, with internal notes kept to the team. */

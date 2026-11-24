@@ -2,9 +2,12 @@
 /** Pages anyone can open without an account (the public issues page). No sidebar; a slim header and footer. */
 const { loggedIn, registered } = useAccess()
 const route = useRoute()
-const appName = useRuntimeConfig().public.appName || 'Ticketer'
+const { site } = useSite()
 const colorMode = useColorMode()
 const signInLink = computed(() => ({ path: '/auth/login', query: { redirect: route.fullPath } }))
+
+// A toast whenever an issue is made public.
+useNewPublicIssueToasts()
 </script>
 
 <template>
@@ -12,10 +15,7 @@ const signInLink = computed(() => ({ path: '/auth/login', query: { redirect: rou
     <header class="sticky top-0 z-30 border-b border-default bg-default/85 backdrop-blur">
       <div class="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4">
         <NuxtLink to="/" class="flex min-w-0 items-center gap-2 font-semibold text-highlighted">
-          <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-inverted">
-            <UIcon name="i-lucide-ticket-check" class="size-5" />
-          </span>
-          <span class="truncate text-lg tracking-tight">{{ appName }}</span>
+          <BrandMark />
           <span class="hidden text-sm font-normal text-muted sm:inline">· Help</span>
         </NuxtLink>
         <nav class="ml-2 hidden items-center gap-1 md:flex" aria-label="Help pages">
@@ -47,7 +47,13 @@ const signInLink = computed(() => ({ path: '/auth/login', query: { redirect: rou
 
     <footer class="border-t border-default">
       <div class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-muted">
-        <span>{{ appName }} · help and status</span>
+        <span class="flex items-center gap-3">
+          <span>{{ site.name }} · help and status</span>
+          <a v-if="site.website" :href="site.website" class="inline-flex items-center gap-1 hover:text-highlighted" rel="noopener">
+            {{ site.website.replace(/^https?:\/\//, '').replace(/\/$/, '') }}
+            <UIcon name="i-lucide-arrow-up-right" class="size-3" />
+          </a>
+        </span>
         <span class="flex items-center gap-3">
           <NuxtLink to="/" class="hover:text-highlighted">Get help</NuxtLink>
           <NuxtLink to="/issues" class="hover:text-highlighted">Status and issues</NuxtLink>

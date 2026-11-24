@@ -13,8 +13,18 @@ function scrollDown(smooth = true) {
 }
 watch(() => [active.value?.id, active.value?.messages.length, view.value, active.value?.ticketId, active.value?.status], (now, before) => scrollDown(now[0] === before?.[0]), { immediate: true })
 
+// A visitor's first message creates their guest account: that's where the bot check applies.
+const captcha = useCaptcha(() => !props.chat.user.value)
+const { widget: captchaWidget, token: captchaToken } = captcha
+
 async function start(input: { body: string; files: File[] }) {
-  await props.chat.start({ subject: subject.value, ...input })
+  if (!captcha.ready.value) throw new Error('Complete the “I’m not a robot” check first')
+  try {
+    await props.chat.start({ subject: subject.value, ...input, headers: captcha.headers() })
+  } catch (error) {
+    captcha.spent()
+    throw error
+  }
   subject.value = ''
   view.value = 'thread'
 }
@@ -103,6 +113,7 @@ function preview(c: ConversationDTO) {
         </button>
       </div>
       <div class="space-y-2 border-t border-default p-2">
+        <CaptchaWidget v-if="captcha.required.value" ref="captchaWidget" v-model="captchaToken" />
         <UInput v-model="subject" placeholder="Subject (optional)" variant="outline" size="sm" class="w-full" :maxlength="200" aria-label="Subject" />
         <ConversationComposer :send="start" compact autofocus placeholder="Describe what you need…" />
       </div>

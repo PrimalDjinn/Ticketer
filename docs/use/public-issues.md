@@ -19,6 +19,10 @@ one-line status:
 
 The help page also lists those five most recently updated open issues, with their status.
 
+Everything here updates by itself. When the team publishes an issue, people with Ticketer open see **New public
+issue** in the corner, and the **Public issues** card on the dashboard, the help page and **Status and known issues**
+show it within seconds. Visitors who aren't signed in get updates within a minute.
+
 To change what the banner says, change the tickets: publish a ticket to announce a problem, and set it to **Resolved**
 or **Closed** when it's fixed.
 

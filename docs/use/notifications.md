@@ -13,6 +13,10 @@ notifications on your devices, and by email. It also shows how to turn each one 
 | Ticket assigned | The assignee |
 | Mention | The person mentioned, if they can read the comment |
 | Reply in a conversation | The customer (team replies) or the assignee (customer messages) |
+| Task assigned | The new assignee |
+| Comment on a task, task moved, completed or reassigned | The task's followers |
+| Task due tomorrow or today | The assignee, or the followers when nobody is assigned, unless they turned reminders off |
+| Issue made public | Everyone with Ticketer open sees a message in the corner; the dashboards update by themselves |
 
 For more, see [Roles and permissions](/reference/roles#notifications).
 
@@ -70,6 +74,12 @@ Email copies need email to be set up on your deployment. If it isn't, the **Acco
 See [Set up email](/admin/email).
 
 Guests, who have no account, can't turn on push notifications or email copies.
+
+## Due-date reminders
+
+People in the team get a reminder the day before a task assigned to them is due, and on the day if the due date was set
+later. To turn these off, open the user menu, select **Account**, and turn off **Remind me about due tasks**. The page
+shows the time reminders are sent. See [Set up due-date reminders](/admin/reminders).
 
 ## Troubleshooting
 

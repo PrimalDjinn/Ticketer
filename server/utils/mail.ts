@@ -119,9 +119,6 @@ export async function sendMail(event: H3Event, mail: Mail, options: { throwError
 // Templates (Vue Email components in server/emails/), rendered to HTML plus a plain-text version
 // ---------------------------------------------------------------------------------------------------------------------
 
-function appName() {
-  return useRuntimeConfig().public.appName || 'Ticketer'
-}
 
 /** Plain-text rendering: links once, no images/preview text, headings as written, the HTML-only fallback skipped. */
 const plainText = {
@@ -141,19 +138,19 @@ async function renderMail<P extends Record<string, unknown>>(template: Component
   return { html, text }
 }
 
-export function testMail() {
-  return renderMail(TestEmail, { appName: appName() })
+export async function testMail() {
+  return renderMail(TestEmail, { brand: await mailBrand() })
 }
 
-export function passwordResetMail(link: string) {
-  return renderMail(PasswordReset, { appName: appName(), link })
+export async function passwordResetMail(link: string) {
+  return renderMail(PasswordReset, { brand: await mailBrand(), link })
 }
 
-export function inviteMail(link: string, inviter: string | null, role: UserRole) {
-  return renderMail(Invitation, { appName: appName(), link, inviter, rolePhrase: rolePhrase(role), days: INVITE_TTL_DAYS })
+export async function inviteMail(link: string, inviter: string | null, role: UserRole) {
+  return renderMail(Invitation, { brand: await mailBrand(), link, inviter, rolePhrase: rolePhrase(role), days: INVITE_TTL_DAYS })
 }
 
 /** A copy of an in-app notification, with a link to the item and to the setting that turns these emails off. */
-export function notificationMail(message: string, url: string, settingsUrl: string) {
-  return renderMail(Notification, { appName: appName(), message, link: url, settingsLink: settingsUrl })
+export async function notificationMail(message: string, url: string, settingsUrl: string) {
+  return renderMail(Notification, { brand: await mailBrand(), message, link: url, settingsLink: settingsUrl })
 }

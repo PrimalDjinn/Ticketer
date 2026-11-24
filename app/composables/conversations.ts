@@ -130,7 +130,7 @@ export function useSupportChat(options: { isViewing: (id: number) => boolean; on
   }
 
   /** Starts a conversation; a visitor without a session becomes a guest on the way. */
-  async function start(input: { subject?: string; body: string; files: File[] }) {
+  async function start(input: { subject?: string; body: string; files: File[]; headers?: Record<string, string> }) {
     sending.value = true
     try {
       const form = new FormData()
@@ -138,7 +138,7 @@ export function useSupportChat(options: { isViewing: (id: number) => boolean; on
       if (input.subject?.trim()) form.set('subject', input.subject.trim())
       for (const file of input.files) form.append('files', file)
       const hadSession = !!user.value
-      const detail = await $fetch<ConversationDetailDTO>('/api/conversations', { method: 'POST', body: form })
+      const detail = await $fetch<ConversationDetailDTO>('/api/conversations', { method: 'POST', body: form, headers: input.headers })
       if (!hadSession) await refreshSession()
       active.value = detail
       remember({ ...detail, unread: 0 })

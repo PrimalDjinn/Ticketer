@@ -3,11 +3,13 @@
 definePageMeta({ middleware: ['auth', 'admin'] })
 
 type Mail = { transport: 'cloudflare' | 'smtp' | 'none'; from: { value: string } }
-const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }] = await Promise.all([
+const { site } = useSite()
+const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }] = await Promise.all([
   useFetch<Mail>('/api/settings/mail'),
   useFetch<{ password: boolean; oidc: { name: string } | null }>('/api/auth/providers'),
   useFetch<{ signup: SignupMode }>('/api/settings'),
   useFetch<{ enabled: boolean; hour: number; timeZone: string }>('/api/settings/reminders'),
+  useFetch<{ provider: string; active: boolean; problem: string | null }>('/api/settings/captcha'),
 ])
 
 const signupLabel: Record<SignupMode, string> = {
@@ -18,6 +20,13 @@ const signupLabel: Record<SignupMode, string> = {
 }
 
 const rows = computed(() => [
+  {
+    icon: 'i-lucide-palette',
+    title: 'Branding',
+    to: '/settings/branding',
+    ok: true,
+    status: `${site.value.name}${site.value.logoUrl ? ' · logo' : ''} · ${site.value.accent}`,
+  },
   {
     icon: 'i-lucide-mail',
     title: 'Email',
@@ -37,6 +46,19 @@ const rows = computed(() => [
     status: providers.value?.oidc
       ? `${providers.value.oidc.name}${providers.value.password ? ' and passwords' : ' only'}`
       : 'Email and password',
+  },
+  {
+    icon: 'i-lucide-shield-check',
+    title: 'Bot protection',
+    to: '/settings/bot-protection',
+    ok: !!captcha.value?.active,
+    status: !captcha.value
+      ? 'Unknown'
+      : captcha.value.active
+        ? `${captcha.value.provider === 'turnstile' ? 'Cloudflare Turnstile' : 'Google reCAPTCHA'} on sign-up and visitor forms`
+        : captcha.value.provider !== 'none'
+          ? `Not active: ${captcha.value.problem}`
+          : 'Off — sign-up and visitor forms are not checked',
   },
   {
     icon: 'i-lucide-door-open',

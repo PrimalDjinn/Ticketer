@@ -16,7 +16,7 @@ const key = computed(() => params.value.data?.key ?? '')
 const number = computed(() => params.value.data?.number ?? 0)
 const reference = computed(() => `${key.value}-${number.value}`)
 
-useSeoMeta({ title: () => `${reference.value} · Ticketer` })
+useSeoMeta({ title: () => `${reference.value}` })
 
 async function onDeleted() {
   await navigateTo(`/projects/${key.value}`)
