@@ -5,7 +5,8 @@ customers follow known problems and announcements without signing in.
 
 Public issues are listed at `/issues`, on the **Status and known issues** page, with a search box and a status filter.
 Each issue has its own page at `/issues/<reference>`. Visitors reach it from **Status and issues** in the header of the
-public pages, and from the sign-in page.
+public pages, and from the sign-in page. Signed-in people open **Public issues** in the sidebar, and the pages stay
+inside the app, with the sidebar and header.
 
 ## The status banner
 
