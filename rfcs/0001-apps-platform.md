@@ -557,7 +557,7 @@ a thin wrapper someone can publish later.
 
 | Today | Under this design |
 | --- | --- |
-| Integration apps and `/api/integrations/v1` | **Unchanged and supported.** Embedding is its own job, signing in outside people, and its API is a contract. Later, an integration app can also be given scopes and become a full app; one table with an "embedding" capability. |
+| Integration apps and `/api/integrations/v1` | **Unchanged and supported.** Embedding is its own job, signing in outside people, and its API is a contract. Later, an integration app can also be given scopes and become a full app; one table with an "embedding" capability. One addition in phase 1: `POST /api/integrations/v1/sessions` accepts `Idempotency-Key`. Testing the AI skill showed why: a report that timed out on the caller's side had still created its ticket, and a retry would have made a duplicate. |
 | GitHub sync | **Step 1** (with the outbox): it consumes `task.*` events instead of being called from handlers. **Step 2** (optional): becomes a first-party app on the public pieces, if the platform proves itself. That follows the Mattermost lesson without forcing a risky rewrite early. |
 | Realtime events | Fed from the outbox. Browser behaviour is unchanged. |
 | `task_activity` | Kept. Could later be derived from events. |

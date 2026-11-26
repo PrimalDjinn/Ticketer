@@ -21,7 +21,7 @@ login link.
 | Field | Type | Required | Limits and notes |
 | --- | --- | --- | --- |
 | `email` | string | Yes | Valid email. Compared in lowercase. |
-| `name` | string | No | Up to 100 characters. |
+| `name` | string | No | Up to 100 characters. For a new account, Ticketer turns it into a username: letters, digits and underscores only, so `Jane Doe` becomes `JaneDoe`, with a suffix if taken. |
 | `externalId` | string | No | 1 to 200 characters. The person's ID in the product. |
 | `target` | string | No | `new-ticket`, `chat`, `tickets` or `ticket`. |
 | `ticketId` | integer | With `target: "ticket"` | The person's own ticket, or a public one. |
@@ -49,7 +49,12 @@ Response `200`:
   the app and listing each `context` entry as `key: value`. The person follows the ticket; admins are notified.
 
 How the person is found: by `externalId` if the app linked it before, then by `email`, otherwise a new external
-account is created if the app **May create accounts** (else `403`).
+account is created if the app **May create accounts** (else `403`). So every call, even without a ticket, may create
+an account.
+
+Timing: a sign-in usually answers within a second or two. With `ticket` it does more work (the ticket, followers,
+notifications) and can take several seconds on a busy server. Use a 30-second timeout. A timeout doesn't mean the
+ticket wasn't created, and there's no idempotency key yet, so don't resend automatically.
 
 Errors: `400`, `401`, `403`, `404` (the `ticketId` isn't theirs or public), `409` (staff, or invited to the team).
 
@@ -141,6 +146,11 @@ a login link for. Ticketer keeps login-link records for about a day, so send `ex
 | --- | --- | --- |
 | `email` | Yes | |
 | `tickets` | No | `keep` (default): tickets stay, with "Deleted user" as the reporter. `delete`: also deletes every ticket they opened and the text of their replies elsewhere. |
+
+When the product deletes a person's account, call this first. Retry on network errors and `5xx`. On `403` "did not
+come through this integration", the person also uses Ticketer directly: go ahead with the product's own deletion and
+tell a Ticketer admin, who deletes them from **Members**. On `409`, the person is on the team: delete only the
+product account.
 
 Responses:
 

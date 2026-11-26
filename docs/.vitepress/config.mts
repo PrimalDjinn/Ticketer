@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import llmstxt from 'vitepress-plugin-llms'
 
 export default defineConfig({
   title: 'Ticketer',
@@ -7,6 +8,8 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [['link', { rel: 'icon', href: '/Ticketer/favicon.ico' }]],
+  // llms.txt and llms-full.txt, plus a .md copy of every page, for AI assistants.
+  vite: { plugins: [llmstxt()] },
   themeConfig: {
     nav: [
       { text: 'Get started', link: '/guide/overview' },

@@ -59,6 +59,9 @@ shouldn't be signed in. Read [references/api.md](references/api.md) for every fi
 - Opening a ticket changes data, so do it from a `POST` (a form submit or a `fetch`), never from a `GET` that a
   crawler, link preview or prefetcher could follow. In Next.js, use a plain `<a>` or a `<form>` for these routes, not
   `<Link>`, which prefetches.
+- Opening a ticket can take several seconds. Give that call a 30-second timeout, and don't retry it automatically:
+  after a timeout the ticket may still have been created. Tell the person their report may have been received, and
+  point them to their open issues.
 - Send `externalId` (or `external_id`) with every sign-in. It's the person's ID in the product. It keeps the account
   linked when their email changes, and lets the app delete the person later.
 - Put useful context in `ticket.context`, such as the page URL, plan, app version and browser: up to 30 entries,
@@ -88,7 +91,9 @@ Ready-made code for Node.js, Next.js, Express, Python (Flask and Django), PHP (L
    parameters, as its `--help` describes, and compare again.
 3. **End to end:** sign in to the product as a test user whose email isn't on the Ticketer team, click the button,
    and check that Ticketer opens on the right page, signed in as that user. The new ticket must show your context
-   under "Reported from".
+   under "Reported from". Without a browser, follow the redirects with `curl -L` and a cookie jar: the last response
+   should set Ticketer's session cookie. That cookie is `Secure`; browsers and curl accept it on `http://localhost`.
+   Also try a staff email: it must show your "sign in to Ticketer directly" message.
 4. Click the button twice. Each click must make a fresh link.
 
 ## When something fails
@@ -106,6 +111,8 @@ API errors are JSON with `statusCode` and `message`. Browser links never show an
 | `launch_expired` | Link older than 5 minutes, or server clock wrong | Make links on click; sync the clock |
 | `launch_used`, `launch_replayed` | Link opened twice, or a nonce reused | New link and nonce for every click |
 | No **Back to** link | `returnUrl` origin isn't allowed for the app | Ask an admin to add the origin |
+| `403 … did not come through this integration` on delete | The person uses Ticketer directly, not through the app | Delete them in the product anyway; ask a Ticketer admin to delete them from **Members** |
+| Timeout while opening a ticket | Ticketer is slow, but the ticket may exist | Don't resend; tell the person it may have been received |
 
 The full list is in [references/errors.md](references/errors.md).
 

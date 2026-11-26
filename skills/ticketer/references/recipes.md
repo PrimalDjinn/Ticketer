@@ -2,8 +2,9 @@
 
 Each recipe adds two routes to the product, behind its own sign-in:
 
-- `GET /support?target=new-ticket|chat|tickets`: signs the person in to Ticketer and lands them there. It creates
-  nothing, so a plain link is fine.
+- `GET /support?target=new-ticket|chat|tickets|ticket`: signs the person in to Ticketer and lands them there. It
+  opens no ticket, so a plain link is fine. (It may create the person's external account in Ticketer, which is
+  harmless.)
 - `POST /support/report`: opens a ticket from a form in the product, then lands on it. It's a `POST` so that
   crawlers, link previews and prefetchers never open tickets.
 
@@ -12,6 +13,11 @@ Both make the login link when the person clicks: the link works once, within 5 m
 
 When Ticketer answers `409`, the person is on the Ticketer team, or invited to it. Show a message asking them to sign
 in to Ticketer directly, at `TICKETER_URL`.
+
+`returnUrl` comes from the `Referer` header below. That's safe, because Ticketer ignores return URLs whose origin
+isn't allowed for the app, but the header can be missing: fall back to the product's home page. Protect the `POST`
+routes with the product's usual CSRF defence. Escape ticket titles when you render them: people outside the team
+write them.
 
 ## Contents
 
@@ -29,27 +35,40 @@ Node.js 18 or later (built-in `fetch`). Server only.
 
 ```js
 // ticketer.js
-const TARGETS = new Set(['new-ticket', 'chat', 'tickets'])
+const TARGETS = new Set(['new-ticket', 'chat', 'tickets', 'ticket'])
 
 export class TicketerTeamError extends Error {}
+/** Opening a ticket timed out: it may still have been created, so don't resend. */
+export class TicketerMaybeCreatedError extends Error {}
 
-export async function ticketerLoginLink(user, { target, ticket, returnUrl } = {}) {
-  const response = await fetch(`${process.env.TICKETER_URL}/api/integrations/v1/sessions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${process.env.TICKETER_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      email: user.email,
-      name: user.name,
-      externalId: String(user.id),
-      target: TARGETS.has(target) ? target : undefined,
-      ticket,
-      returnUrl,
-    }),
-    signal: AbortSignal.timeout(10_000),
-  })
+export async function ticketerLoginLink(user, { target, ticketId, ticket, returnUrl } = {}) {
+  const wanted = TARGETS.has(target) ? target : undefined
+  let response
+  try {
+    response = await fetch(`${process.env.TICKETER_URL}/api/integrations/v1/sessions`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${process.env.TICKETER_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email,
+        name: user.name,
+        externalId: String(user.id),
+        target: wanted,
+        ticketId: wanted === 'ticket' ? Number(ticketId) : undefined,
+        ticket,
+        returnUrl,
+      }),
+      // Opening a ticket does more work than a sign-in.
+      signal: AbortSignal.timeout(ticket ? 30_000 : 10_000),
+    })
+  } catch (error) {
+    if (ticket && error.name === 'TimeoutError') throw new TicketerMaybeCreatedError('Ticketer did not answer in time')
+    throw error
+  }
   const body = await response.json().catch(() => ({}))
   if (response.status === 409) throw new TicketerTeamError(body.message)
-  if (!response.ok) throw new Error(`Ticketer ${response.status}: ${body.message ?? response.statusText}`)
+  if (!response.ok) {
+    throw Object.assign(new Error(`Ticketer ${response.status}: ${body.message ?? response.statusText}`), { status: response.status })
+  }
   return body // { url, expiresAt, userId, created, ticket? }
 }
 
@@ -67,7 +86,9 @@ export function reportContext(req, extra = {}) {
 
 ```js
 import express from 'express'
-import { ticketerLoginLink, reportContext, TicketerTeamError } from './ticketer.js'
+import { ticketerLoginLink, reportContext, TicketerTeamError, TicketerMaybeCreatedError } from './ticketer.js'
+
+const APP_URL = process.env.APP_URL ?? 'http://localhost:3000' // the product's own address
 
 const app = express()
 app.use(express.urlencoded({ extended: false }))
@@ -75,10 +96,16 @@ app.use(express.urlencoded({ extended: false }))
 // requireLogin is the product's own middleware; it sets req.user.
 app.get('/support', requireLogin, async (req, res, next) => {
   try {
-    const { url } = await ticketerLoginLink(req.user, { target: req.query.target, returnUrl: req.get('referer') })
+    const { url } = await ticketerLoginLink(req.user, {
+      target: req.query.target,
+      ticketId: req.query.ticketId, // with target=ticket; Ticketer answers 404 unless it's theirs or public
+      returnUrl: req.get('referer') ?? APP_URL,
+    })
     res.redirect(303, url)
   } catch (error) {
     if (error instanceof TicketerTeamError) return res.status(409).send('You are on the support team: sign in to Ticketer directly.')
+    if (error.status === 404) return res.status(404).send('That issue was not found.')
+    if (error.status === 400) return res.status(400).send('That link is not valid.')
     next(error)
   }
 })
@@ -92,11 +119,14 @@ app.post('/support/report', requireLogin, async (req, res, next) => {
         description: String(req.body.description ?? '').slice(0, 8000) || undefined,
         context: reportContext(req, { plan: req.user.plan ?? '' }),
       },
-      returnUrl: req.get('referer'),
+      returnUrl: req.get('referer') ?? APP_URL,
     })
     res.redirect(303, url) // lands on the new ticket
   } catch (error) {
     if (error instanceof TicketerTeamError) return res.status(409).send('You are on the support team: sign in to Ticketer directly.')
+    if (error instanceof TicketerMaybeCreatedError) {
+      return res.status(504).send('Your report may have been received. Check your open issues before sending it again.')
+    }
     next(error)
   }
 })
@@ -393,5 +423,5 @@ export async function ticketerTickets(email, status = 'open') {
 }
 ```
 
-To support `target=ticket`, pass `ticketId` through in the `/support` route: for example, in the Node.js helper, send
-`target: 'ticket', ticketId: Number(req.query.ticketId)` when `req.query.target === 'ticket'`.
+Link each item as `/support?target=ticket&ticketId=<id>`; the Node.js helper and the Express route above pass both on.
+Render titles as text, escaped, never as HTML.
