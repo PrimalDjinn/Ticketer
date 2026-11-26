@@ -129,6 +129,10 @@ notes, assigning, creating and moving tasks) and for reacting to changes:
   the Standard Webhooks format: verify them with the `standardwebhooks` library. Read
   [references/webhooks.md](references/webhooks.md).
 
+- **MCP**: to let an assistant work in Ticketer directly rather than write code, connect it to
+  `<TICKETER_URL>/mcp` (Streamable HTTP) with the same token as `Authorization: Bearer`. Its tools are the API
+  endpoints above. Setup for each assistant: https://primaldjinn.github.io/Ticketer/integrate/mcp
+
 Store the token as `TICKETER_TOKEN` and the webhook secret as `TICKETER_WEBHOOK_SECRET`, on the server only. Ask for the
 narrowest scopes that do the job. Send an `Idempotency-Key` header with every POST, so a retry after a timeout doesn't
 act twice.

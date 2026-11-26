@@ -45,6 +45,8 @@ export interface Endpoint {
   shape?: 'list'
   /** Last changes to the answer, e.g. hiding internal notes from tokens without `notes:read`. */
   transform?: (result: any, event: H3Event) => unknown
+  /** The MCP tool for this endpoint (server/routes/mcp.ts). `readOnly` and `destructive` become tool annotations. */
+  tool: { name: string; title: string; readOnly?: boolean; destructive?: boolean }
 }
 
 const notes = (event: H3Event) => hasApiScope(event, 'notes:read')
@@ -56,6 +58,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/me',
+    tool: { name: 'whoami', title: 'Who am I', readOnly: true },
     scope: null,
     tag: 'Account',
     summary: 'Who the token acts as, and its scopes',
@@ -66,6 +69,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/tickets',
+    tool: { name: 'list_tickets', title: 'List tickets', readOnly: true },
     scope: 'tickets:read',
     tag: 'Tickets',
     summary: 'List tickets',
@@ -77,6 +81,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/tickets',
+    tool: { name: 'create_ticket', title: 'Open a ticket' },
     scope: 'tickets:write',
     tag: 'Tickets',
     summary: 'Open a ticket',
@@ -87,6 +92,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/tickets/{id}',
+    tool: { name: 'get_ticket', title: 'Get a ticket', readOnly: true },
     scope: 'tickets:read',
     tag: 'Tickets',
     summary: 'Get a ticket with its replies, files and linked tasks',
@@ -98,6 +104,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'PATCH',
     path: '/tickets/{id}',
+    tool: { name: 'update_ticket', title: 'Update a ticket' },
     scope: 'tickets:write',
     tag: 'Tickets',
     summary: 'Change a ticket’s status, assignee, title or visibility',
@@ -109,6 +116,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'DELETE',
     path: '/tickets/{id}',
+    tool: { name: 'delete_ticket', title: 'Delete a ticket', destructive: true },
     scope: 'tickets:write',
     tag: 'Tickets',
     summary: 'Delete a ticket, its replies and files',
@@ -119,6 +127,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/tickets/{id}/comments',
+    tool: { name: 'reply_to_ticket', title: 'Reply to a ticket or add an internal note' },
     scope: 'tickets:write',
     tag: 'Tickets',
     summary: 'Reply to a ticket, or add an internal note',
@@ -132,6 +141,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/conversations',
+    tool: { name: 'list_conversations', title: 'List support chats', readOnly: true },
     scope: 'conversations:read',
     tag: 'Support chats',
     summary: 'List support chats',
@@ -144,6 +154,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/conversations/{id}',
+    tool: { name: 'get_conversation', title: 'Get a support chat', readOnly: true },
     scope: 'conversations:read',
     tag: 'Support chats',
     summary: 'Get a support chat with its messages',
@@ -155,6 +166,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'PATCH',
     path: '/conversations/{id}',
+    tool: { name: 'update_conversation', title: 'Assign, close or reopen a support chat' },
     scope: 'conversations:write',
     tag: 'Support chats',
     summary: 'Assign, close or reopen a support chat',
@@ -165,6 +177,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/conversations/{id}/messages',
+    tool: { name: 'send_conversation_message', title: 'Send a message in a support chat' },
     scope: 'conversations:write',
     tag: 'Support chats',
     summary: 'Send a message in a support chat',
@@ -178,6 +191,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/projects',
+    tool: { name: 'list_projects', title: 'List projects', readOnly: true },
     scope: 'projects:read',
     tag: 'Projects',
     summary: 'List projects',
@@ -186,6 +200,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/projects/{key}',
+    tool: { name: 'get_project', title: 'Get a project board', readOnly: true },
     scope: 'projects:read',
     tag: 'Projects',
     summary: 'Get a project’s board: its statuses, tasks, labels and members',
@@ -195,6 +210,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/projects/{key}/tasks',
+    tool: { name: 'create_task', title: 'Create a task' },
     scope: 'tasks:write',
     tag: 'Tasks',
     summary: 'Create a task',
@@ -205,6 +221,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/tasks/search',
+    tool: { name: 'search_tasks', title: 'Search tasks', readOnly: true },
     scope: 'tasks:read',
     tag: 'Tasks',
     summary: 'Search tasks by reference or title',
@@ -214,6 +231,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/tasks/mine',
+    tool: { name: 'my_tasks', title: 'My tasks', readOnly: true },
     scope: 'tasks:read',
     tag: 'Tasks',
     summary: 'Tasks assigned to the token’s owner',
@@ -222,6 +240,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/tasks/{id}',
+    tool: { name: 'get_task', title: 'Get a task', readOnly: true },
     scope: 'tasks:read',
     tag: 'Tasks',
     summary: 'Get a task with its comments, subtasks and activity',
@@ -231,6 +250,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'PATCH',
     path: '/tasks/{id}',
+    tool: { name: 'update_task', title: 'Update a task' },
     scope: 'tasks:write',
     tag: 'Tasks',
     summary: 'Change a task: title, description, status, assignee, priority, dates, labels…',
@@ -241,6 +261,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'DELETE',
     path: '/tasks/{id}',
+    tool: { name: 'delete_task', title: 'Delete a task', destructive: true },
     scope: 'tasks:write',
     tag: 'Tasks',
     summary: 'Delete a task and its subtasks',
@@ -250,6 +271,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'POST',
     path: '/tasks/{id}/comments',
+    tool: { name: 'comment_on_task', title: 'Comment on a task' },
     scope: 'tasks:write',
     tag: 'Tasks',
     summary: 'Comment on a task',
@@ -263,6 +285,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/people',
+    tool: { name: 'list_people', title: 'List the team', readOnly: true },
     scope: 'people:read',
     tag: 'People',
     summary: 'People on the team (admins, members, viewers), for assigning and mentioning',
@@ -271,6 +294,7 @@ export const endpoints: Endpoint[] = [
   {
     method: 'GET',
     path: '/events',
+    tool: { name: 'list_events', title: 'List recent changes', readOnly: true },
     scope: null,
     tag: 'Events',
     summary: 'What happened, oldest first: the same events webhooks receive',
