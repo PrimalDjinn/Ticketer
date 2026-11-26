@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
+import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 
-definePageMeta({ layout: 'public' })
+// Signed-in people stay in the app (sidebar and all); visitors and guest sessions get the public site.
+definePageMeta({
+  middleware: [
+    () => {
+      const { loggedIn, user } = useUserSession()
+      setPageLayout(!loggedIn.value || user.value?.isGuest ? 'public' : 'default')
+    },
+  ],
+})
 
 const route = useRoute()
 const toast = useToast()
@@ -78,10 +86,14 @@ async function copyLink() {
   await navigator.clipboard.writeText(window.location.href)
   toast.add({ title: 'Link copied', icon: 'i-lucide-copy-check' })
 }
+
+const { registered } = useAccess()
+const [DefinePage, ReusePage] = createReusableTemplate()
 </script>
 
 <template>
-  <div v-if="issue" class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
+  <DefinePage>
+    <template v-if="issue">
     <UButton to="/issues" icon="i-lucide-arrow-left" label="All issues" color="neutral" variant="link" class="mb-4 px-0" />
 
     <div class="grid gap-8 lg:grid-cols-[1fr_16rem]">
@@ -212,5 +224,20 @@ async function copyLink() {
         </div>
       </aside>
     </div>
+    </template>
+  </DefinePage>
+
+  <UDashboardPanel v-if="registered" id="public-issues">
+    <template #header>
+      <AppNavbar :title="issue?.title ?? 'Public issue'" />
+    </template>
+    <template #body>
+      <div v-if="issue" class="mx-auto w-full max-w-5xl">
+        <ReusePage />
+      </div>
+    </template>
+  </UDashboardPanel>
+  <div v-else class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
+    <ReusePage v-if="issue" />
   </div>
 </template>

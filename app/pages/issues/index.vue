@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { z } from 'zod'
-import { watchDebounced } from '@vueuse/core'
+import { createReusableTemplate, watchDebounced } from '@vueuse/core'
 
-definePageMeta({ layout: 'public' })
+// Signed-in people stay in the app (sidebar and all); visitors and guest sessions get the public site.
+definePageMeta({
+  middleware: [
+    () => {
+      const { loggedIn, user } = useUserSession()
+      setPageLayout(!loggedIn.value || user.value?.isGuest ? 'public' : 'default')
+    },
+  ],
+})
 
 const { site } = useSite()
 const route = useRoute()
@@ -50,13 +58,18 @@ const chips = computed(() => [
   ...TICKET_STATUSES.map((s) => ({ label: statusMeta[s].label, value: s, icon: statusMeta[s].icon })),
 ])
 const statusText: Record<TicketStatus, string> = { Open: 'text-info', Pending: 'text-warning', Resolved: 'text-success', Closed: 'text-muted' }
+
+const { registered } = useAccess()
+const [DefinePage, ReusePage] = createReusableTemplate()
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-12">
+  <DefinePage>
     <div class="mb-8 space-y-2">
       <h1 class="text-2xl font-semibold tracking-tight text-highlighted sm:text-3xl">Status and known issues</h1>
-      <p class="max-w-2xl text-muted">Known issues, fixes in progress and announcements from the team. Sign in to follow an issue or add details.</p>
+      <p class="max-w-2xl text-muted">
+          Known issues, fixes in progress and announcements from the team.<template v-if="!registered"> Sign in to follow an issue or add details.</template>
+        </p>
     </div>
     <PublicStatusBanner :status="overview.status" class="mb-8" />
 
@@ -111,5 +124,19 @@ const statusText: Record<TicketStatus, string> = { Open: 'text-info', Pending: '
     <div v-if="data.total > pageSize" class="mt-6 flex justify-center">
       <UPagination :page="filters.page" :total="data.total" :items-per-page="pageSize" @update:page="(p) => setFilters({ ...filters, page: p })" />
     </div>
+  </DefinePage>
+
+  <UDashboardPanel v-if="registered" id="public-issues">
+    <template #header>
+      <AppNavbar :title="'Public issues'" />
+    </template>
+    <template #body>
+      <div class="mx-auto w-full max-w-5xl">
+        <ReusePage />
+      </div>
+    </template>
+  </UDashboardPanel>
+  <div v-else class="mx-auto w-full max-w-5xl px-4 py-8 sm:py-12">
+    <ReusePage />
   </div>
 </template>
