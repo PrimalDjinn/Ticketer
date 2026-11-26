@@ -17,6 +17,8 @@ jobs:
   check:
     name: Typecheck & build
     runs-on: ubuntu-latest
+    # Fails a stuck run instead of billing up to GitHub\'s 6-hour default.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -35,6 +37,8 @@ jobs:
     name: Docker image
     needs: check
     runs-on: ubuntu-latest
+    # Fails a stuck run instead of billing up to GitHub\'s 6-hour default.
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -71,6 +75,8 @@ jobs:
     needs: check
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Fails a stuck run instead of billing up to GitHub\'s 6-hour default.
+    timeout-minutes: 30
     environment: production
     # Every deployment (each fork) brings its own Cloudflare account. Without these settings the job ends early and
     # successfully, so upstream CI stays green.
