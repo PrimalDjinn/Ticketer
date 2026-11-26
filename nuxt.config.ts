@@ -18,7 +18,8 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxtjs/mdc', '@nuxthub/core', 'nuxt-auth-utils'],
 
   // Markdown in descriptions and comments, rendered with Nuxt UI's prose components. See app/utils/markdown.ts.
-  mdc: { headings: { anchorLinks: false } },
+  // No syntax highlighting (Nuxt UI turns it on): it would add shiki and its grammars to the Worker bundle.
+  mdc: { headings: { anchorLinks: false }, highlight: false },
 
   css: ['~/assets/css/main.css'],
 
