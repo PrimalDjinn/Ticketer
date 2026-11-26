@@ -17,7 +17,7 @@ const SCOPE_GROUPS = [
   { label: 'Tickets', read: 'tickets:read', write: 'tickets:write' },
   { label: 'Internal notes', read: 'notes:read', write: 'notes:write' },
   { label: 'Support chats', read: 'conversations:read', write: 'conversations:write' },
-  { label: 'Projects', read: 'projects:read', write: 'projects:write' },
+  { label: 'Projects', read: 'projects:read', write: null },
   { label: 'Tasks', read: 'tasks:read', write: 'tasks:write' },
   { label: 'People (names and email addresses)', read: 'people:read', write: null },
 ] as const
@@ -107,16 +107,19 @@ const expired = (t: TokenView) => !!t.expiresAt && new Date(t.expiresAt) < new D
           <UFormField label="Name" required help="What uses it, so you can tell tokens apart.">
             <UInput v-model="draft.name" placeholder="Nightly report script" maxlength="80" class="w-full" />
           </UFormField>
-          <UFormField label="Scopes" help="Give only what the tool needs.">
+          <!-- A fieldset, not UFormField: UFormField gives every checkbox inside it the same id and label. -->
+          <fieldset class="space-y-1.5">
+            <legend class="text-sm font-medium text-default">Scopes</legend>
+            <p class="text-sm text-muted">Give only what the tool needs.</p>
             <div class="divide-y divide-default rounded-md border border-default">
               <div v-for="g in SCOPE_GROUPS" :key="g.read" class="flex items-center gap-4 px-3 py-2 text-sm">
                 <span class="flex-1">{{ g.label }}</span>
-                <UCheckbox :model-value="draft.scopes.includes(g.read)" label="Read" @update:model-value="(v) => toggle(g.read, !!v)" />
-                <UCheckbox v-if="g.write" :model-value="draft.scopes.includes(g.write)" label="Change" @update:model-value="(v) => toggle(g.write!, !!v)" />
+                <UCheckbox :model-value="draft.scopes.includes(g.read)" label="Read" :aria-label="`${g.label}: read`" @update:model-value="(v) => toggle(g.read, !!v)" />
+                <UCheckbox v-if="g.write" :model-value="draft.scopes.includes(g.write)" label="Change" :aria-label="`${g.label}: change`" @update:model-value="(v) => toggle(g.write!, !!v)" />
                 <span v-else class="w-[4.5rem]" />
               </div>
             </div>
-          </UFormField>
+          </fieldset>
           <UFormField label="Expires">
             <USelect v-model="draft.expires" :items="EXPIRY" class="w-40" />
           </UFormField>

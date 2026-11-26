@@ -88,7 +88,6 @@ export const API_SCOPES = [
   'conversations:read',
   'conversations:write',
   'projects:read',
-  'projects:write',
   'tasks:read',
   'tasks:write',
   'people:read',

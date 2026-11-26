@@ -230,7 +230,9 @@ async function copy(text: string) {
           <UFormField label="Address" required help="Ticketer sends a POST with a JSON body. It must answer 2xx within 10 seconds.">
             <UInput v-model="draft.url" type="url" placeholder="https://n8n.example.com/webhook/ticketer" class="w-full" />
           </UFormField>
-          <UFormField label="Events">
+          <!-- A fieldset, not UFormField: UFormField gives every checkbox inside it the same id and label. -->
+          <fieldset class="space-y-1.5">
+            <legend class="text-sm font-medium text-default">Events</legend>
             <div class="space-y-3">
               <UCheckbox v-model="draft.all" label="All events, including ones added later" />
               <div v-if="!draft.all" class="grid gap-3 sm:grid-cols-2">
@@ -247,7 +249,7 @@ async function copy(text: string) {
                 </div>
               </div>
             </div>
-          </UFormField>
+          </fieldset>
           <div class="space-y-2 rounded-md border border-default p-3">
             <UCheckbox v-model="draft.includeNotes" label="Send internal notes" description="Notes on tickets and chats that only the team sees. Off: they're never sent here." />
             <UCheckbox v-model="draft.includeEmails" label="Send email addresses" description="Off: email addresses are removed from every event." />

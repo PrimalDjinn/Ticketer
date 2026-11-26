@@ -1,7 +1,11 @@
 # Choose an integration flow
 
-This section is for developers of another product who want a "Report a problem" or "Contact support" button that
-sends their users to Ticketer. This page helps you pick the right flow.
+This section is for developers who connect other software to Ticketer. There are two kinds of connection:
+
+- **Work with Ticketer from scripts and tools**: read and change tickets, chats and tasks as yourself with the
+  [API](/integrate/api), and react to changes as they happen with [webhooks](/integrate/webhooks).
+- **Send another product's users to Ticketer**: a "Report a problem" or "Contact support" button in that product. The
+  rest of this page helps you pick the right flow for it.
 
 Every flow needs an app that an admin created in **Settings** > **Integrations**. See
 [Connect an app](/admin/integrations). Depending on the flow, you use the app's ID, API key or signing secret.

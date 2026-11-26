@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Status | Draft, for discussion |
+| Status | Phases 0 to 2 implemented (see [Implementation status](#implementation-status)); the rest is a proposal |
 | Date | 2026-11-26 |
 | Scope | How other software extends Ticketer and calls it: a public API, webhooks, installable apps, UI extensions, and AI agents |
 
@@ -30,6 +30,27 @@ The work comes in phases, and each phase is useful on its own:
 
 Phases 1 to 4 deliver most of the value: Ticketer becomes scriptable, Zapier, n8n and AI agents work, and anyone can
 build a Slack or Linear bridge. They take roughly two months of focused work for one developer. The rest can follow when someone needs it, or never.
+
+## Implementation status
+
+Built in November 2026. Phases 0 to 2 are done, adapted as follows. Phase 3, the MCP server, comes next.
+
+- **Phase 0, the event log.** Events are recorded where Ticketer already announces changes to the team in realtime
+  (`publish` in `server/utils/realtime.ts` feeds `server/utils/events.ts`). That covers every route, GitHub sync and
+  the integration API without moving the business logic into commands first; commands can still come gradually.
+  `changes` are worked out by comparing with the subject's previous event. The actor comes from the session, the
+  token, the integration app or GitHub sync.
+- **Phase 1, tokens and `/api/v1`.**
+  - Personal access tokens (`tkp_`) carry the scopes in `API_SCOPES`.
+  - `/api/v1` is a registry (`server/v1/registry.ts`) that maps each public endpoint to the existing handler the pages
+    use, plus a scope. The same registry generates `/api/v1/openapi.json`.
+  - Lists page by number (`page`, `nextPage`) like the pages do, not by cursor.
+  - `Idempotency-Key` works on JSON POSTs, including `POST /api/integrations/v1/sessions`.
+  - `projects:write` and admin-only scopes wait until an endpoint needs them.
+- **Phase 2, webhooks.**
+  - Admins add webhooks directly in **Settings** > **Webhooks**, before apps exist. Each one has "Send internal notes"
+    and "Send email addresses" switches instead of scopes. They'll become apps' endpoints in phase 4.
+  - Retries start at 1 minute, run by an every-minute scheduled task on both runtimes, not by a Durable Object alarm.
 
 ## Contents
 
