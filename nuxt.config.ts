@@ -98,6 +98,9 @@ export default defineNuxtConfig({
       groupsClaim: '', // default "groups"
       roleGroups: '', // e.g. admin:ticketer-admins,member:staff,viewer:auditors,external:customers
       only: '', // true = hide the password form and password sign-up/reset
+      // Escape hatch (NUXT_OIDC_ALLOW_PASSWORD=true): password sign-in, sign-up and reset work whatever the SSO-only
+      // setting says. For when the identity provider is down and no admin can get in with a password.
+      allowPassword: '',
       redirectUrl: '', // only behind proxies that hide the public origin: https://tickets.example.com/auth/oidc/callback
     },
     public: {

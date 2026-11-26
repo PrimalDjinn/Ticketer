@@ -58,6 +58,7 @@ Each variable pins one field in **Settings** > **Sign-in**. See [Set up single s
 | `NUXT_OIDC_GROUPS_CLAIM` | `groups` | Claim that lists groups. Dotted paths work, such as `realm_access.roles`. | Both |
 | `NUXT_OIDC_ROLE_GROUPS` | None | Group-to-role mapping: `role:group` pairs separated by commas, such as `admin:ticketer-admins,member:staff`. | Both |
 | `NUXT_OIDC_ONLY` | `false` | `true` hides password sign-in (except for admins), sign-up and reset. | Both |
+| `NUXT_OIDC_ALLOW_PASSWORD` | `false` | Escape hatch: `true` keeps password sign-in, sign-up and reset working whatever `NUXT_OIDC_ONLY` or **Single sign-on only** says. Remove it once single sign-on works again. | Both |
 | `NUXT_OIDC_REDIRECT_URL` | `<origin>/auth/oidc/callback` | Full callback URL. Set it only when a proxy hides the public address. | Both |
 
 ## Appearance
