@@ -64,6 +64,7 @@ export default defineConfig({
           { text: 'Delete a person', link: '/integrate/delete-people' },
           { text: 'Security model', link: '/integrate/security' },
           { text: 'Handle integration errors', link: '/integrate/errors' },
+          { text: 'Use an AI coding assistant', link: '/integrate/ai-assistants' },
         ],
       },
       {

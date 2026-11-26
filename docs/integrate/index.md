@@ -34,6 +34,11 @@ The flows that sign people in take a `target`:
 Without a target, people land on the app's **Landing page**. If you also send a ticket, Ticketer creates it and, unless
 you ask for another target, opens it.
 
+## Let an AI assistant do it
+
+Coding assistants such as Claude Code, Codex, Cursor and GitHub Copilot can add these flows for you with the Ticketer
+skill. See [Use an AI coding assistant](/integrate/ai-assistants).
+
 ## What's next
 
 - [Create a login link](/integrate/login-link)
