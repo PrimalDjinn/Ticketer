@@ -67,7 +67,8 @@ People outside the team never receive internal notes, other people's user IDs, o
 | **Members**: list people, change roles | Yes | No | No | No | No |
 | Invite people, manage invitations | Yes | No | No | No | No |
 | Change **Who can sign up** | Yes | No | No | No | No |
-| **Settings**: email, sign-in, integrations | Yes | No | No | No | No |
+| **Settings**: email, sign-in, integrations, webhooks, API | Yes | No | No | No | No |
+| Revoke anyone's access token | Yes | No | No | No | No |
 
 ## Your account
 
@@ -76,9 +77,13 @@ People outside the team never receive internal notes, other people's user IDs, o
 | Change own password (**Account** page) | Yes | Yes | Yes | Yes, if the account has a password | No |
 | Delete own account (**Account** page) | Yes, unless the last admin | Yes | Yes | Yes | No |
 | Push notifications and email copies (**Account** page) | Yes | Yes | Yes | Yes | No |
+| Create access tokens for the API (**Account** page) | Yes | Yes | Yes | No | No |
 | Delete other people's accounts (**Members**) | Yes | No | No | No | No |
 
 See [Delete accounts and personal data](/admin/delete-accounts).
+
+An access token acts as its owner, within its scopes: it can never do more than the owner's role allows. A viewer's
+token reads only. See [Use the API](/integrate/api).
 
 ## Notifications
 

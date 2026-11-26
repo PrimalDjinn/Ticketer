@@ -2,7 +2,7 @@ import { and, count, desc, eq, exists, isNull, or, sql, type SQL } from 'drizzle
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const query = z.object({
+export const query = z.object({
   /** Team default: open. People outside the team see all of their conversations unless they ask otherwise. */
   status: z.enum([...CONVERSATION_STATUSES, 'all']).optional(),
   /** Team only: `me`, `none`, `anyone`, or a person's id. */
@@ -25,13 +25,13 @@ function likeTerm(q: string) {
  * Each item carries a preview of the latest message the viewer may see and their unread count.
  */
 export default defineEventHandler(async (event): Promise<ConversationPage> => {
-  const session = await getUserSession(event)
+  const sessionUser = (event.context.apiUser as PublicUser | undefined) ?? (await getUserSession(event)).user
   const input = await getValidatedQuery(event, query.parse)
   const pageSize = input.pageSize ?? input.limit ?? 30
   const empty = { items: [], total: 0, page: input.page, pageSize }
-  if (!session.user) return empty
+  if (!sessionUser) return empty
 
-  const user = await withFreshRole(session.user)
+  const user = await withFreshRole(sessionUser)
   const team = user.isInternal
   const c = schema.conversations
   const where: (SQL | undefined)[] = []

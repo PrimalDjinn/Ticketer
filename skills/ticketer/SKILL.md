@@ -1,6 +1,6 @@
 ---
 name: ticketer
-description: Connects a product to a Ticketer help desk. Adds "Report a problem" and "Contact support" buttons that sign the product's users in to Ticketer, open prefilled tickets, start a support chat, list a user's tickets, and delete a user's Ticketer data on request. Use when the user mentions Ticketer, or asks to add a help desk, support, feedback or bug-report button backed by Ticketer, or to call the Ticketer integration API.
+description: Connects software to a Ticketer help desk. Adds "Report a problem" and "Contact support" buttons that sign a product's users in to Ticketer, open prefilled tickets, start a support chat, list a user's tickets and delete their data; scripts Ticketer through its REST API with personal access tokens; and receives and verifies its webhooks. Use when the user mentions Ticketer, or asks to add a help desk, support, feedback or bug-report button backed by Ticketer, to automate tickets, chats or tasks in Ticketer, or to react to Ticketer events.
 license: Apache-2.0
 metadata:
   version: "1.0"
@@ -66,8 +66,8 @@ shouldn't be signed in. Read [references/api.md](references/api.md) for every fi
   linked when their email changes, and lets the app delete the person later.
 - Put useful context in `ticket.context`, such as the page URL, plan, app version and browser: up to 30 entries,
   values up to 2,000 characters. Never put passwords, tokens or payment details there. Support staff can read it.
-- Call only `/api/integrations/v1/*` and `/launch`. Other `/api/*` routes serve Ticketer's own pages: they use the
-  browser session, change without notice, and aren't for integrations.
+- Call only `/api/integrations/v1/*`, `/launch` and the public API `/api/v1/*`. Other `/api/*` routes serve
+  Ticketer's own pages: they use the browser session, change without notice, and aren't for integrations.
 
 ## Build it
 
@@ -116,9 +116,22 @@ API errors are JSON with `statusCode` and `message`. Browser links never show an
 
 The full list is in [references/errors.md](references/errors.md).
 
-## What Ticketer doesn't offer yet
+## Script Ticketer, or react to its changes
 
-There's no public API yet for staff work such as listing every ticket, replying as an agent, managing projects and
-tasks, or subscribing to webhooks. Don't work around this by scraping pages or calling internal `/api/*` routes with a
-staff session. Tell the user it isn't available, and point them to
-https://github.com/PrimalDjinn/Ticketer/issues if they want to request it.
+The flows above are for a product's own users. For work the team does (listing tickets, replying, adding internal
+notes, assigning, creating and moving tasks) and for reacting to changes:
+
+- **REST API** at `/api/v1`, with a personal access token (`tkp_…`) that someone on the team creates under
+  **Account > Access tokens**. It acts as that person, within the token's scopes and their role. Read
+  [references/rest-api.md](references/rest-api.md). The full schema is at `<TICKETER_URL>/api/v1/openapi.json`; fetch
+  it when you need exact fields.
+- **Webhooks**: an admin adds the receiver's address in **Settings > Webhooks** and gets a `whsec_` secret. Events use
+  the Standard Webhooks format: verify them with the `standardwebhooks` library. Read
+  [references/webhooks.md](references/webhooks.md).
+
+Store the token as `TICKETER_TOKEN` and the webhook secret as `TICKETER_WEBHOOK_SECRET`, on the server only. Ask for the
+narrowest scopes that do the job. Send an `Idempotency-Key` header with every POST, so a retry after a timeout doesn't
+act twice.
+
+If the user needs something neither offers, don't scrape pages or call internal `/api/*` routes with a browser
+session. Tell them, and point them to https://github.com/PrimalDjinn/Ticketer/issues to ask for it.

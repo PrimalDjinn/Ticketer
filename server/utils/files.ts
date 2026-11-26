@@ -8,7 +8,7 @@ type Owner = { ticketId: number } | { commentId: number } | { messageId: number 
 
 /** Reads every `File` sent under `field` in a multipart body, plus the plain text fields. */
 export async function readMultipart(event: H3Event, field = 'files') {
-  const form = await readFormData(event)
+  const form = (getRequestHeader(event, 'content-type') ?? '').includes('application/json') ? await jsonAsForm(event) : await readFormData(event)
   const files = form.getAll(field).filter((v): v is File => typeof v !== 'string' && v.size > 0)
   if (files.length > UPLOAD_LIMITS.maxFiles) {
     throw createError({ status: 400, message: `Attach at most ${UPLOAD_LIMITS.maxFiles} files` })
@@ -21,6 +21,23 @@ export async function readMultipart(event: H3Event, field = 'files') {
     return typeof value === 'string' ? value : undefined
   }
   return { files, text, form }
+}
+
+/**
+ * A JSON body as form fields, for API callers (`/api/v1`) of handlers that take uploads: strings as they are, numbers
+ * and booleans as text, arrays as repeated fields (`mentions: ["a", "b"]`). No files.
+ */
+async function jsonAsForm(event: H3Event) {
+  const body = await readBody<unknown>(event)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw createError({ status: 400, message: 'Send a JSON object' })
+  const form = new FormData()
+  for (const [name, value] of Object.entries(body)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item === null || item === undefined) continue
+      form.append(name, typeof item === 'object' ? JSON.stringify(item) : String(item))
+    }
+  }
+  return form
 }
 
 function safeName(name: string) {

@@ -96,6 +96,15 @@ See [Sync projects with GitHub issues](/admin/github). Each variable overrides t
 | `NUXT_GITHUB_API_URL` | `https://api.github.com` | API address, for GitHub Enterprise Server. | Both |
 | `NUXT_GITHUB_WEB_URL` | `https://github.com` | Web address, for GitHub Enterprise Server. | Both |
 
+## API and webhooks
+
+See [Use the API](/integrate/api) and [Send events to other tools](/admin/webhooks).
+
+| Variable | Default | Description | Applies to |
+| --- | --- | --- | --- |
+| `NUXT_API_RATE_LIMIT` | `600` | Requests per minute per access token. Counted per server process, or per Worker instance on Cloudflare, so it's a guard rather than an exact quota. | Both |
+| `NUXT_WEBHOOKS_ALLOW_PRIVATE_NETWORK` | `false` | `true` lets webhooks reach private and local addresses (`10.x`, `192.168.x`, `localhost`…) and plain `http://`, for receivers such as n8n on the same network. It lets admins make the server call internal hosts, so turn it on only when you need it. On Cloudflare, Workers can only reach public addresses anyway. | Both |
+
 ## Node server
 
 | Variable | Default | Description | Applies to |

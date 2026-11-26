@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
   } catch {
     throw createError({ status: 400, message: 'Not JSON' })
   }
+  setEventActor(event, { type: 'app', id: 'github', name: 'GitHub' })
   try {
     const result = await handleGithubEvent(event, name, payload, config)
     if (!result.startsWith('ignored')) log.info(`${name}: ${result}`)

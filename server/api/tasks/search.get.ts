@@ -2,7 +2,7 @@ import { and, desc, eq, like, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const query = z.object({
+export const query = z.object({
   q: z.string().trim().max(100).default(''),
   exclude: z.coerce.number().int().positive().optional(),
 })

@@ -693,3 +693,114 @@ export const githubDeliveries = sqliteTable('github_deliveries', {
   id: text('id').primaryKey(),
   receivedAt: createdAt(),
 })
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Public API, events and webhooks (rfcs/0001-apps-platform.md)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Everything that happened, as the team would hear it: the source for webhooks and `GET /api/v1/events`. `data` is the
+ * subject after the change (as the team sees it), `changes` the top-level fields that changed. Kept 30 days.
+ */
+export const events = sqliteTable(
+  'events',
+  {
+    /** `evt_` + ULID: sorts by time. Also the `webhook-id` of its deliveries. */
+    id: text('id').primaryKey(),
+    type: text('type').notNull(),
+    occurredAt: integer('occurred_at', { mode: 'timestamp_ms' }).notNull(),
+    /** `user`, `app` (an integration or GitHub) or `system` (scheduled jobs). */
+    actorType: text('actor_type', { enum: ['user', 'app', 'system'] }).notNull(),
+    actorId: text('actor_id'),
+    actorName: text('actor_name'),
+    subjectType: text('subject_type').notNull(),
+    subjectId: text('subject_id').notNull(),
+    data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+    changes: text('changes', { mode: 'json' }).$type<Record<string, { from: unknown; to: unknown }> | null>(),
+  },
+  (t) => [index('events_subject_idx').on(t.subjectType, t.subjectId, t.id), index('events_occurred_idx').on(t.occurredAt)],
+)
+
+/** Personal access tokens: act as their owner, limited to `scopes`. Only a hash is stored. */
+export const apiTokens = sqliteTable(
+  'api_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    keyHash: text('key_hash').notNull().unique(),
+    /** First characters of the token, so people can tell tokens apart. */
+    keyPrefix: text('key_prefix').notNull(),
+    scopes: text('scopes', { mode: 'json' }).$type<string[]>().notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('api_tokens_user_idx').on(t.userId)],
+)
+
+/** An address Ticketer sends signed events to (Standard Webhooks). */
+export const webhooks = sqliteTable('webhooks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  /** Event types, or `['*']` for all. */
+  events: text('events', { mode: 'json' }).$type<string[]>().notNull(),
+  /** `whsec_…`, encrypted with encryptSecret. */
+  secret: text('secret').notNull(),
+  /** Internal notes (ticket and chat) are sent only when this is on. */
+  includeNotes: integer('include_notes', { mode: 'boolean' }).notNull().default(false),
+  /** Email addresses are removed from payloads unless this is on. */
+  includeEmails: integer('include_emails', { mode: 'boolean' }).notNull().default(false),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  /** Why Ticketer turned it off, if it did. */
+  disabledReason: text('disabled_reason'),
+  /** First failure since the last success: after 3 days of failures the webhook is turned off. */
+  failingSince: integer('failing_since', { mode: 'timestamp_ms' }),
+  lastSuccessAt: integer('last_success_at', { mode: 'timestamp_ms' }),
+  createdById: text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+})
+
+/** One event on its way to one webhook, with its attempts. Kept 7 days. */
+export const webhookDeliveries = sqliteTable(
+  'webhook_deliveries',
+  {
+    id: text('id').primaryKey(),
+    webhookId: text('webhook_id')
+      .notNull()
+      .references(() => webhooks.id, { onDelete: 'cascade' }),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type').notNull(),
+    /** `pending` (waiting for its next attempt), `success` or `failed` (gave up). */
+    status: text('status', { enum: ['pending', 'success', 'failed'] })
+      .notNull()
+      .default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: integer('next_attempt_at', { mode: 'timestamp_ms' }),
+    responseStatus: integer('response_status'),
+    responseMs: integer('response_ms'),
+    /** The start of the response body, or the network error. */
+    responseExcerpt: text('response_excerpt'),
+    createdAt: createdAt(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('webhook_deliveries_due_idx').on(t.status, t.nextAttemptAt), index('webhook_deliveries_hook_idx').on(t.webhookId, t.createdAt)],
+)
+
+/** Responses to `Idempotency-Key` requests, replayed for 24 hours so a retried POST doesn't act twice. */
+export const idempotencyKeys = sqliteTable(
+  'idempotency_keys',
+  {
+    /** Who sent it (`token:<id>` or `app:<id>`) and their key. */
+    scope: text('scope').notNull(),
+    key: text('key').notNull(),
+    requestHash: text('request_hash').notNull(),
+    status: integer('status').notNull(),
+    response: text('response', { mode: 'json' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.key] })],
+)
