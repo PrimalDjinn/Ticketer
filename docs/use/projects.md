@@ -58,6 +58,9 @@ A task has a title, a description, a status, a priority (**Urgent**, **High**, *
 priority**), an assignee, a start date, a due date, labels, subtasks, attachments and comments. The **Activity** tab
 records every change.
 
+Descriptions and comments are written in Markdown, as on GitHub: `**bold**`, lists, `- [ ]` checklists, `` `code` ``,
+code blocks, tables and links. To change the description, click it; the editor shows the Markdown.
+
 To assign a task quickly, use the assignee menu on a board card or list row, or press `I` with the task open.
 
 ### Follow a task

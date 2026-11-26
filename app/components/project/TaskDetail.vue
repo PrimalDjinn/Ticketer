@@ -145,11 +145,6 @@ function onDescriptionKey(event: KeyboardEvent) {
   }
 }
 
-// Plain text with URLs turned into links; rendered as text nodes and anchors, never as HTML.
-const URL_PATTERN = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:!?)\]}])/
-const descriptionSegments = computed(() =>
-  (task.value?.description ?? '').split(URL_PATTERN).map((text, index) => ({ text, link: index % 2 === 1 })),
-)
 
 // Reset transient state when the slide-over switches to another task.
 watch(url, () => {
@@ -541,14 +536,11 @@ function openInPlace(event: MouseEvent, id: number) {
         <div v-else-if="task.description" class="group relative">
           <!-- Click anywhere to edit; the button below is the keyboard path. -->
           <div
-            class="-mx-2 rounded-md px-2 py-1 text-sm leading-relaxed whitespace-pre-wrap break-words text-default"
+            class="-mx-2 rounded-md px-2 py-1 text-sm leading-relaxed text-default"
             :class="canEdit && 'cursor-text hover:bg-elevated/50'"
             @click="editDescription"
           >
-            <template v-for="(segment, i) in descriptionSegments" :key="i">
-              <a v-if="segment.link" :href="segment.text" target="_blank" rel="noopener noreferrer nofollow" class="text-primary underline-offset-2 hover:underline">{{ segment.text }}</a>
-              <template v-else>{{ segment.text }}</template>
-            </template>
+            <MDC :value="task.description" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0" />
           </div>
           <UButton
             v-if="canEdit"

@@ -265,7 +265,7 @@ async function copyReference() {
               />
             </div>
 
-            <p class="text-base leading-relaxed whitespace-pre-wrap break-words text-default">{{ ticket.info }}</p>
+            <MDC :value="ticket.info" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-base leading-relaxed text-default" />
             <AttachmentGrid :attachments="ticket.attachments" />
           </section>
 

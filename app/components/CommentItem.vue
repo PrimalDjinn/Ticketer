@@ -24,15 +24,8 @@ const toast = useToast()
 const replying = ref(false)
 const canDelete = computed(() => user.value?.isAdmin || props.comment.authorId === user.value?.id)
 
-// Split the body into plain text and @mentions of known people. Rendered as text nodes, never as HTML.
-const segments = computed(() => {
-  const names = props.people.map((p) => p.name).sort((a, b) => b.length - a.length)
-  if (!names.length) return [{ text: props.comment.body, mention: false }]
-  const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const pattern = new RegExp(`(@(?:${escaped.join('|')}))(?!\\w)`)
-  // With one capture group, split() puts every mention at an odd index.
-  return props.comment.body.split(pattern).map((text, index) => ({ text, mention: index % 2 === 1 }))
-})
+// @mentions of known people stand out (in bold) inside the markdown.
+const body = computed(() => boldMentions(props.comment.body, props.people.map((p) => p.name)))
 
 async function remove() {
   try {
@@ -69,12 +62,7 @@ function onPosted(comment: CommentDTO) {
           </span>
           <NuxtTime v-if="comment.createdAt" :datetime="comment.createdAt" relative :title="formatDateTime(comment.createdAt)" class="text-xs text-muted" />
         </div>
-        <p v-if="comment.body" class="mt-1 text-sm whitespace-pre-wrap break-words text-default">
-          <template v-for="(segment, i) in segments" :key="i">
-            <span v-if="segment.mention" class="rounded bg-primary/10 px-0.5 font-medium text-primary">{{ segment.text }}</span>
-            <template v-else>{{ segment.text }}</template>
-          </template>
-        </p>
+        <MDC v-if="comment.body" :value="body" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 mt-1 text-sm text-default" />
         <p v-else-if="!comment.attachments.length" class="mt-1 text-sm text-dimmed italic">This reply was removed.</p>
         <AttachmentGrid v-if="comment.attachments.length" :attachments="comment.attachments" compact class="mt-2" />
         <div class="mt-1 flex gap-1">

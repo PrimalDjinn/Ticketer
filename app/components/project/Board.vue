@@ -57,7 +57,7 @@ function created(task: TaskDTO) {
       :class="status.isDone ? 'bg-elevated/30' : 'bg-elevated/60'"
       :aria-label="status.name"
     >
-      <header class="flex items-center gap-2 px-3 pt-2.5 pb-2">
+      <header class="flex items-center gap-2 px-3 pt-2.5 pb-1">
         <span class="size-2 shrink-0 rounded-full" :class="color(status.color).dot" />
         <h2 class="truncate text-sm font-medium" :class="status.isDone ? 'text-muted' : 'text-highlighted'">{{ status.name }}</h2>
         <span class="text-xs text-dimmed tabular-nums">{{ columnTasks.length }}</span>
@@ -77,7 +77,7 @@ function created(task: TaskDTO) {
       <div
         :ref="(el) => setContainer(status.id, el)"
         :data-status-id="status.id"
-        class="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
+        class="flex min-h-12 flex-1 flex-col gap-2 overflow-y-auto px-2 pt-1 pb-2"
         :class="status.isDone && 'opacity-80'"
       >
         <ProjectTaskCard

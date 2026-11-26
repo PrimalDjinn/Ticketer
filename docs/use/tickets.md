@@ -33,6 +33,9 @@ Admins are notified of every new ticket. You follow your own tickets automatical
 Write in the box under **Activity** and select **Comment** (or **Reply**, for the team). Type `@` to mention someone;
 they get a notification. You can attach files to a comment, and reply to a comment to start a thread.
 
+Descriptions and comments can use Markdown, as on GitHub: `**bold**`, lists, `` `code` ``, code blocks, tables and
+links. Links open in a new tab. HTML tags aren't shown. To show a screenshot, attach it.
+
 Who can reply:
 
 | Who | Can reply |
