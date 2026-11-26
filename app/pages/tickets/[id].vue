@@ -265,7 +265,7 @@ async function copyReference() {
               />
             </div>
 
-            <p class="text-base leading-relaxed whitespace-pre-wrap break-words text-default">{{ ticket.info }}</p>
+            <MarkdownText :text="ticket.info" class="text-base leading-relaxed text-default" />
             <AttachmentGrid :attachments="ticket.attachments" />
           </section>
 
