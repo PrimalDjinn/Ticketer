@@ -36,6 +36,8 @@ export interface OidcSettingsDTO {
   active: boolean
   /** Why it is not active, when enabled but incomplete. */
   problem: string | null
+  /** NUXT_OIDC_ALLOW_PASSWORD is set: passwords keep working even with "Single sign-on only". */
+  passwordOverride: boolean
 }
 
 export interface OidcTestResult {

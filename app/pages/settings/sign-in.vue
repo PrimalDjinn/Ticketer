@@ -95,6 +95,16 @@ function reset() {
 watch(settings, reset, { immediate: true })
 
 const secretSet = computed(() => settings.value?.clientSecret.set ?? false)
+/** SSO-only needs single sign-on switched on, saved and working (the server enforces the same). */
+const ssoWorks = computed(() => !!settings.value?.active && form.value.enabled)
+// Switching single sign-on off also switches "only" off: it can't be the only way in while it's off.
+watch(
+  () => form.value.enabled,
+  (enabled) => {
+    if (!enabled && !pinned('only')) form.value.only = false
+  },
+)
+
 const pinned = (field: Field) => (field === 'clientSecret' ? settings.value?.clientSecret.source : settings.value?.[field].source) === 'env'
 
 const dirty = computed(() => {
@@ -366,12 +376,21 @@ const roleOptions = USER_ROLES.map((value) => ({ value, label: roleMeta[value].l
             Hides the password form, sign-up and password reset. Admins can still use a password at /auth/login?password in case the provider is
             down.
           </p>
+          <p v-if="!ssoWorks && !form.only" class="mt-1 text-xs text-warning">Turn single sign-on on, save and test it first.</p>
         </div>
         <div class="flex items-center gap-2">
           <IntegrationsEnvBadge v-if="pinned('only')" :name="envName('only')" />
-          <USwitch v-model="form.only" :disabled="pinned('only')" aria-label="Single sign-on only" />
+          <USwitch v-model="form.only" :disabled="pinned('only') || (!ssoWorks && !form.only)" aria-label="Single sign-on only" />
         </div>
       </div>
+      <UAlert
+        v-if="settings?.passwordOverride"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-key-round"
+        title="NUXT_OIDC_ALLOW_PASSWORD is set"
+        description="Password sign-in, sign-up and reset work whatever “Single sign-on only” says. Remove the variable once single sign-on works again."
+      />
 
       <p class="flex items-start gap-2 text-sm text-muted">
         <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" />

@@ -55,10 +55,18 @@ export default defineEventHandler(async (event) => {
   if (input.clientSecret?.trim()) next.clientSecret = await encryptSecret(input.clientSecret.trim())
 
   // Turning it on needs the essentials (from env or here).
+  const issuer = config.sources.issuer === 'env' ? config.issuer : next.issuer
+  const clientId = config.sources.clientId === 'env' ? config.clientId : next.clientId
   if (next.enabled && config.sources.enabled !== 'env') {
-    const issuer = config.sources.issuer === 'env' ? config.issuer : next.issuer
-    const clientId = config.sources.clientId === 'env' ? config.clientId : next.clientId
     if (!issuer || !clientId) throw createError({ status: 400, message: 'Enter the issuer URL and client ID before turning single sign-on on' })
+  }
+
+  // "Single sign-on only" only makes sense while single sign-on works: refuse it otherwise, and turning single
+  // sign-on off clears it, so it can't silently lock passwords out later when SSO is turned back on.
+  const enabledAfter = config.sources.enabled === 'env' ? config.enabled : next.enabled
+  if (!enabledAfter && input.only === undefined) next.only = false
+  if (next.only && input.only === true && !(enabledAfter && issuer && clientId)) {
+    throw createError({ status: 400, message: 'Turn single sign-on on, save and test it before making it the only way in' })
   }
 
   await setSetting('oidc', next)

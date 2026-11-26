@@ -91,10 +91,21 @@ userinfo endpoint.
 With **Single sign-on only** on, the sign-in page shows only the single sign-on button, and password sign-up and
 password reset are off.
 
+1. Turn on **Enable single sign-on**, select **Save**, and test signing in with the provider.
+2. Turn on **Single sign-on only** and select **Save**.
+
+**Single sign-on only** can't be turned on until single sign-on is on and saved. Turning single sign-on off turns
+**Single sign-on only** off too.
+
 Admins keep password sign-in as a break-glass for when the provider is down: open `/auth/login?password`, or select
 **Admin sign-in with a password** on the sign-in page. `NUXT_ADMIN_EMAIL` and `pnpm admin` also keep working.
 
-**Single sign-on only** has no effect while single sign-on is off or incomplete.
+### If nobody can get in
+
+If the provider is down and no admin can sign in with a password, for example because the admin's password is
+forgotten and password reset is off, set `NUXT_OIDC_ALLOW_PASSWORD=true` on the server and restart it, or redeploy on
+Cloudflare. Password sign-in, sign-up and password reset then work for everyone, whatever **Single sign-on only**
+says, and **Settings** > **Sign-in** shows a warning. Remove the variable once single sign-on works again.
 
 ## Configure it with environment variables
 
@@ -113,6 +124,7 @@ be changed there. Fields you don't pin stay editable.
 | `NUXT_OIDC_GROUPS_CLAIM` | **Groups claim** | `groups` |
 | `NUXT_OIDC_ROLE_GROUPS` | **Groups to roles** | None. Format: `admin:ticketer-admins,member:staff` |
 | `NUXT_OIDC_ONLY` | **Single sign-on only** | `false` |
+| `NUXT_OIDC_ALLOW_PASSWORD` | None: overrides **Single sign-on only** | `false`. See [If nobody can get in](#if-nobody-can-get-in). |
 | `NUXT_OIDC_REDIRECT_URL` | None | `<origin>/auth/oidc/callback` |
 
 Set `NUXT_OIDC_REDIRECT_URL` only when a proxy hides the public address from Ticketer. Ticketer builds the callback URL

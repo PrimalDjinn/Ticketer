@@ -56,6 +56,8 @@ export interface OidcConfig {
   only: boolean
   /** The SSO-only switch as configured, whether or not SSO is active. */
   onlyRequested: boolean
+  /** NUXT_OIDC_ALLOW_PASSWORD: passwords work whatever `only` says (escape hatch). */
+  passwordOverride: boolean
   redirectUrl: string
   sources: Record<'enabled' | 'issuer' | 'clientId' | 'clientSecret' | 'name' | 'scopes' | 'defaultRole' | 'groupsClaim' | 'roleGroups' | 'only', ConfigSource>
   problem: string | null
@@ -131,6 +133,7 @@ export async function oidcConfig(event?: H3Event): Promise<OidcConfig> {
 
   const envOnly = envFlag(env.only)
   const only = envOnly ?? s.only
+  const passwordOverride = envFlag((env as { allowPassword?: unknown }).allowPassword) === true
   const onlySource: ConfigSource = envOnly !== null ? 'env' : stored ? 'settings' : 'unset'
 
   let problem: string | null = null
@@ -152,8 +155,9 @@ export async function oidcConfig(event?: H3Event): Promise<OidcConfig> {
     groupsClaim: groupsClaim || OIDC_DEFAULTS.groupsClaim,
     roleGroups: parseRoleGroups(roleGroupsText),
     roleGroupsText,
-    only: active && only,
+    only: active && only && !passwordOverride,
     onlyRequested: only,
+    passwordOverride,
     redirectUrl: envText(env.redirectUrl),
     sources: {
       enabled: enabledSource,
@@ -747,6 +751,7 @@ export async function oidcSettingsDTO(event: H3Event): Promise<OidcSettingsDTO> 
     callbackUrl: oidcCallbackUrl(event, config),
     active: config.active,
     problem: config.problem,
+    passwordOverride: config.passwordOverride,
   }
 }
 
