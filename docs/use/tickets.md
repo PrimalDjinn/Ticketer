@@ -34,8 +34,7 @@ Write in the box under **Activity** and select **Comment** (or **Reply**, for th
 they get a notification. You can attach files to a comment, and reply to a comment to start a thread.
 
 Descriptions and comments can use Markdown, as on GitHub: `**bold**`, lists, `` `code` ``, code blocks, tables and
-links. Links open in a new tab. Images in Markdown show only when they're files on Ticketer; others appear as links,
-so nobody can track who reads a ticket. To show a screenshot, attach it instead.
+links. Links open in a new tab. HTML tags aren't shown. To show a screenshot, attach it.
 
 Who can reply:
 

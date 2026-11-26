@@ -24,8 +24,8 @@ const toast = useToast()
 const replying = ref(false)
 const canDelete = computed(() => user.value?.isAdmin || props.comment.authorId === user.value?.id)
 
-// @mentions of known people are highlighted inside the markdown.
-const mentionNames = computed(() => props.people.map((p) => p.name))
+// @mentions of known people stand out (in bold) inside the markdown.
+const body = computed(() => boldMentions(props.comment.body, props.people.map((p) => p.name)))
 
 async function remove() {
   try {
@@ -62,7 +62,7 @@ function onPosted(comment: CommentDTO) {
           </span>
           <NuxtTime v-if="comment.createdAt" :datetime="comment.createdAt" relative :title="formatDateTime(comment.createdAt)" class="text-xs text-muted" />
         </div>
-        <MarkdownText v-if="comment.body" :text="comment.body" :mentions="mentionNames" class="mt-1 text-sm text-default" />
+        <MDC v-if="comment.body" :value="body" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 mt-1 text-sm text-default" />
         <p v-else-if="!comment.attachments.length" class="mt-1 text-sm text-dimmed italic">This reply was removed.</p>
         <AttachmentGrid v-if="comment.attachments.length" :attachments="comment.attachments" compact class="mt-2" />
         <div class="mt-1 flex gap-1">

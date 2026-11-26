@@ -100,7 +100,7 @@ async function copyLink() {
         </header>
 
         <section class="space-y-4">
-          <MarkdownText :text="issue.info" class="leading-relaxed text-default" />
+          <MDC :value="issue.info" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 leading-relaxed text-default" />
           <AttachmentGrid :attachments="issue.attachments" />
         </section>
 
@@ -128,7 +128,7 @@ async function copyLink() {
                   <NuxtTime :datetime="comment.createdAt" relative class="text-xs text-muted" />
                   <span v-if="parent" class="text-xs text-dimmed">· replying to {{ parent.authorName }}</span>
                 </div>
-                <MarkdownText v-if="comment.body" :text="comment.body" class="mt-1 text-sm text-default" />
+                <MDC v-if="comment.body" :value="comment.body" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 mt-1 text-sm text-default" />
                 <p v-else-if="!comment.attachments.length" class="mt-1 text-sm text-dimmed italic">This reply was removed.</p>
                 <AttachmentGrid v-if="comment.attachments.length" :attachments="comment.attachments" compact class="mt-2" />
               </div>

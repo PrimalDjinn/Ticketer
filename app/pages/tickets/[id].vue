@@ -265,7 +265,7 @@ async function copyReference() {
               />
             </div>
 
-            <MarkdownText :text="ticket.info" class="text-base leading-relaxed text-default" />
+            <MDC :value="ticket.info" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-base leading-relaxed text-default" />
             <AttachmentGrid :attachments="ticket.attachments" />
           </section>
 

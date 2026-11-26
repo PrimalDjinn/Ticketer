@@ -540,7 +540,7 @@ function openInPlace(event: MouseEvent, id: number) {
             :class="canEdit && 'cursor-text hover:bg-elevated/50'"
             @click="editDescription"
           >
-            <MarkdownText :text="task.description" />
+            <MDC :value="task.description" :parser-options="userMarkdown" class="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0" />
           </div>
           <UButton
             v-if="canEdit"

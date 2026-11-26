@@ -15,7 +15,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   devtools: { enabled: true },
 
-  modules: ['@nuxt/ui', '@nuxthub/core', 'nuxt-auth-utils'],
+  modules: ['@nuxt/ui', '@nuxtjs/mdc', '@nuxthub/core', 'nuxt-auth-utils'],
+
+  // Markdown in descriptions and comments, rendered with Nuxt UI's prose components. See app/utils/markdown.ts.
+  mdc: { headings: { anchorLinks: false } },
 
   css: ['~/assets/css/main.css'],
 
