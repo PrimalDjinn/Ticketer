@@ -1,0 +1,44 @@
+# Keeps dependencies current: one grouped pull request a week for minor and patch updates, a pull request per major
+# update, and security fixes as soon as GitHub knows about them. CI runs on each one; review and merge as usual.
+version: 2
+updates:
+  - package-ecosystem: npm # reads pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    # Like pnpm's minimumReleaseAge: let a new release settle before proposing it (bad or hijacked releases are
+    # usually pulled within days). Security updates aren't delayed.
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      # Everything that shouldn't break, in one pull request.
+      minor-and-patch:
+        update-types: [minor, patch]
+      # Nuxt, Nitro and Nuxt UI move together.
+      nuxt:
+        patterns: ["nuxt", "nitropack", "@nuxt/*", "@nuxthub/*", "@nuxtjs/*", "nuxt-*"]
+        update-types: [major]
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
