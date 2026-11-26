@@ -30,6 +30,7 @@ const icons: Record<string, string> = {
   message: 'i-lucide-message-circle',
   task: 'i-lucide-square-check-big',
   reminder: 'i-lucide-alarm-clock',
+  webhook: 'i-lucide-webhook',
 }
 </script>
 

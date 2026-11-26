@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const fields = z.object({
+export const fields = z.object({
   body: z.string().trim().max(10_000).default(''),
   parentId: z.coerce.number().int().positive().optional(),
   mentions: z.array(z.string().max(64)).max(50).default([]),

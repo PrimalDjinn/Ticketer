@@ -22,7 +22,7 @@
   "durable_objects": { "bindings": [{ "name": "$DurableObject", "class_name": "$DurableObject" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["$DurableObject"] }],
   // Scheduled jobs (due-date reminders). Must match `nitro.scheduledTasks` in nuxt.config.ts.
-  "triggers": { "crons": ["0 * * * *"] }
+  "triggers": { "crons": ["0 * * * *", "* * * * *"] }
   // Email: add `"send_email": [{ "name": "EMAIL" }]` (or build with CF_SEND_EMAIL=true) once your domain is onboarded to
   // Cloudflare Email Sending. Without it, invitation and reset links are written to the Worker logs.
 }

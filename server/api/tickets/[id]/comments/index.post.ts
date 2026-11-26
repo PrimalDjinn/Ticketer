@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const fields = z.object({
+export const fields = z.object({
   body: z.string().trim().max(10_000).default(''),
   parentId: z.coerce.number().int().positive().optional(),
   mentions: z.array(z.string().max(64)).max(50).default([]),
@@ -40,6 +40,7 @@ export default defineEventHandler(async (event) => {
     if (!parent || (parentHidden && !isInternal(user))) throw createError({ status: 400, message: 'The comment you replied to no longer exists' })
     if (parentHidden) internal = true
   }
+  if (internal) requireApiScope(event, 'notes:write')
 
   const [comment] = await db
     .insert(schema.comments)

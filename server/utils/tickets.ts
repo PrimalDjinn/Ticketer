@@ -15,8 +15,8 @@ export async function ticketViewer(event: H3Event) {
 
 /** Like `ticketViewer`, but `null` for visitors without any session (public pages and file downloads). */
 export async function optionalTicketViewer(event: H3Event) {
-  const session = await getUserSession(event)
-  return session.user ? withFreshRole(session.user) : null
+  const user = (event.context.apiUser as PublicUser | undefined) ?? (await getUserSession(event)).user
+  return user ? withFreshRole(user) : null
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

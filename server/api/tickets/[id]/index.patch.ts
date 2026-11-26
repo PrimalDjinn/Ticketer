@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const body = z
+export const body = z
   .object({
     status: z.enum(TICKET_STATUSES).optional(),
     /** Staff person handling the ticket (an admin or member), or null to unassign. */

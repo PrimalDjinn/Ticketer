@@ -161,6 +161,7 @@ export async function requireIntegrationApp(event: H3Event) {
   }
   log.info('API call', { appId: app.id, app: app.name, method: event.method, path: event.path.split('?')[0], ip })
   await bump(app.id, { apiCalls: 1 })
+  setEventActor(event, { type: 'app', id: app.id, name: app.name })
   return app
 }
 
@@ -314,6 +315,7 @@ export function reportDescription(app: Pick<AppRow, 'name'>, ticket: Pick<Ticket
 
 /** Opens the ticket on the person's behalf; they follow it, and the team hears about it like any new ticket. */
 export async function createReportedTicket(event: H3Event, app: AppRow, user: UserRow, ticket: TicketInput) {
+  setEventActor(event, { type: 'app', id: app.id, name: app.name })
   const [row] = await db
     .insert(schema.tickets)
     .values({

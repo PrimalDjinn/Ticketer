@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const body = z
+export const body = z
   .object({
     status: z.enum(CONVERSATION_STATUSES).optional(),
     /** An admin or member, or null to unassign. */

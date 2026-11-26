@@ -29,12 +29,15 @@ export async function startSession(event: H3Event, user: typeof schema.users.$in
  * deleted (its session cookie may still exist on another device).
  */
 export async function requireUser(event: H3Event) {
+  const apiUser = event.context.apiUser as PublicUser | undefined
+  if (apiUser) return apiUser // a personal access token (server/utils/api-tokens.ts), already checked
   const { user } = await requireUserSession(event)
   const exists = await db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { id: true } })
   if (!exists) {
     await clearUserSession(event)
     throw createError({ status: 401, message: 'This account no longer exists' })
   }
+  setEventActor(event, { type: 'user', id: user.id, name: user.name })
   return user
 }
 
@@ -89,16 +92,23 @@ export async function withFreshRole<T extends { id: string; role: UserRole; isGu
  * chat with support; registering later upgrades the same row.
  */
 export async function ensureUser(event: H3Event) {
+  const apiUser = event.context.apiUser as PublicUser | undefined
+  if (apiUser) return apiUser
   const session = await getUserSession(event)
   if (session.user) {
     const exists = await db.query.users.findFirst({ where: eq(schema.users.id, session.user.id), columns: { id: true } })
-    if (exists) return session.user
+    if (exists) {
+      setEventActor(event, { type: 'user', id: session.user.id, name: session.user.name })
+      return session.user
+    }
   }
   // A visitor's first ticket or chat creates their guest account: that's where bots are stopped.
   await requireCaptcha(event)
   const [guest] = await db.insert(schema.users).values({ id: ulid(), isGuest: true, role: 'external' }).returning()
   await startSession(event, guest!)
-  return toPublicUser(guest!)
+  const user = toPublicUser(guest!)
+  setEventActor(event, { type: 'user', id: user.id, name: user.name })
+  return user
 }
 
 

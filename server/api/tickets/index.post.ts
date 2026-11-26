@@ -3,7 +3,7 @@ import { ulid } from 'ulid'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const fields = z.object({
+export const fields = z.object({
   title: z.string({ error: 'Give the ticket a title' }).trim().min(1, 'Give the ticket a title').max(140, 'Keep the title under 140 characters'),
   info: z.string({ error: 'Describe the problem' }).trim().min(1, 'Describe the problem').max(10_000, 'Keep the description under 10,000 characters'),
   urgency: z.enum(TICKET_URGENCIES).default('Default'),
