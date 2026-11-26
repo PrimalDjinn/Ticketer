@@ -241,6 +241,8 @@ async function remove() {
           </div>
         </section>
 
+        <AccountAccessTokens v-if="data.user.isInternal" />
+
         <section class="space-y-4">
           <div>
             <h2 class="font-semibold text-highlighted">Password</h2>

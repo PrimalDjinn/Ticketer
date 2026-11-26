@@ -4,13 +4,15 @@ definePageMeta({ middleware: ['auth', 'admin'] })
 
 type Mail = { transport: 'cloudflare' | 'smtp' | 'none'; from: { value: string } }
 const { site } = useSite()
-const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }, { data: github }] = await Promise.all([
+const [{ data: mail }, { data: providers }, { data: settings }, { data: reminders }, { data: captcha }, { data: github }, { data: api }, { data: hooks }] = await Promise.all([
   useFetch<Mail>('/api/settings/mail'),
   useFetch<{ password: boolean; oidc: { name: string } | null }>('/api/auth/providers'),
   useFetch<{ signup: SignupMode }>('/api/settings'),
   useFetch<{ enabled: boolean; hour: number; timeZone: string }>('/api/settings/reminders'),
   useFetch<{ provider: string; active: boolean; problem: string | null }>('/api/settings/captcha'),
   useFetch<{ appId: string; slug: string; problem: string | null; installations: unknown[] }>('/api/settings/github'),
+  useFetch<{ enabled: boolean; tokens: unknown[] }>('/api/settings/api'),
+  useFetch<{ webhooks: { enabled: boolean; failingSince: string | null; disabledReason: string | null }[] }>('/api/settings/webhooks'),
 ])
 
 const signupLabel: Record<SignupMode, string> = {
@@ -96,6 +98,26 @@ const rows = computed(() => [
     to: '/settings/integrations',
     ok: true,
     status: 'Let other apps send their users here',
+  },
+  {
+    icon: 'i-lucide-webhook',
+    title: 'Webhooks',
+    to: '/settings/webhooks',
+    ok: !hooks.value?.webhooks.some((h) => h.failingSince || h.disabledReason),
+    status: !hooks.value?.webhooks.length
+      ? 'None — send events to n8n, Zapier or your own code'
+      : hooks.value.webhooks.some((h) => h.disabledReason)
+        ? 'Ticketer turned a failing webhook off'
+        : hooks.value.webhooks.some((h) => h.failingSince)
+          ? 'A webhook is failing'
+          : `${hooks.value.webhooks.filter((h) => h.enabled).length} on`,
+  },
+  {
+    icon: 'i-lucide-braces',
+    title: 'API',
+    to: '/settings/api',
+    ok: true,
+    status: api.value?.enabled ? `Access tokens allowed · ${api.value.tokens.length} in use` : 'Access tokens turned off',
   },
 ])
 </script>

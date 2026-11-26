@@ -51,6 +51,16 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    // Public API and webhooks (docs/reference/api.md, docs/reference/webhooks.md).
+    api: {
+      // Requests per minute per access token (NUXT_API_RATE_LIMIT). Counted per server process or Worker instance.
+      rateLimit: 600,
+    },
+    webhooks: {
+      // Let webhooks reach private and local addresses, and plain http (NUXT_WEBHOOKS_ALLOW_PRIVATE_NETWORK), for
+      // receivers such as n8n on the same network. Off by default: it lets admins make the server call internal hosts.
+      allowPrivateNetwork: false,
+    },
     // Public address (NUXT_SITE_URL), e.g. https://tickets.example.com. Used for links in emails sent by scheduled jobs
     // such as due-date reminders, which have no request to read it from. Unset = the address the team last used.
     siteUrl: '',
@@ -119,6 +129,7 @@ export default defineNuxtConfig({
     // listed under `triggers.crons` in wrangler.jsonc.
     scheduledTasks: {
       '0 * * * *': ['reminders:due'],
+      '* * * * *': ['webhooks:deliver'],
     },
     // Migrations ship with the server so the Node build can apply them to the volume on boot.
     serverAssets: [{ baseName: 'migrations', dir: './db/migrations/sqlite' }],

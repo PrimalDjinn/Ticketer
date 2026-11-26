@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const body = z.object({
+export const body = z.object({
   title: z.string().trim().min(1).max(300).optional(),
   description: z.string().max(20_000).optional(),
   statusId: z.number().int().positive().optional(),

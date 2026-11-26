@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const fields = z.object({
+export const fields = z.object({
   body: conversationMessageBody,
   /** Team only: a note between teammates that the customer never sees. */
   internal: z.stringbool().default(false),
@@ -20,6 +20,7 @@ export default defineEventHandler(async (event): Promise<ConversationMessageDTO>
   const input = fields.parse({ body: text('body'), internal: text('internal') || undefined })
   if (!input.body && !files.length) throw createError({ status: 400, message: 'Write a message or attach a file' })
   if (asCustomer && input.internal) throw createError({ status: 403, message: 'Only the team can write internal notes' })
+  if (input.internal) requireApiScope(event, 'notes:write')
 
   const { message, dto } = await addConversationMessage(row, { authorId: user.id, body: input.body, internal: input.internal, files, uploaderId: user.id })
 

@@ -14,6 +14,8 @@ const tabs: NavigationMenuItem[] = [
   { label: 'Reminders', icon: 'i-lucide-alarm-clock', to: '/settings/reminders' },
   { label: 'GitHub', icon: 'i-lucide-github', to: '/settings/github' },
   { label: 'Integrations', icon: 'i-lucide-plug', to: '/settings/integrations' },
+  { label: 'Webhooks', icon: 'i-lucide-webhook', to: '/settings/webhooks' },
+  { label: 'API', icon: 'i-lucide-braces', to: '/settings/api' },
 ]
 </script>
 

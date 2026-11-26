@@ -43,6 +43,8 @@ export default defineConfig({
           { text: 'Delete accounts and personal data', link: '/admin/delete-accounts' },
           { text: 'Sync projects with GitHub issues', link: '/admin/github' },
           { text: 'Connect an app', link: '/admin/integrations' },
+          { text: 'Send events to other tools', link: '/admin/webhooks' },
+          { text: 'Control API access', link: '/admin/api' },
         ],
       },
       {
@@ -59,6 +61,8 @@ export default defineConfig({
         text: 'Integrate your app',
         items: [
           { text: 'Choose an integration flow', link: '/integrate/' },
+          { text: 'Use the API', link: '/integrate/api' },
+          { text: 'Receive webhooks', link: '/integrate/webhooks' },
           { text: 'Create a login link', link: '/integrate/login-link' },
           { text: 'Redirect with an API key', link: '/integrate/redirect' },
           { text: 'Create signed launch links', link: '/integrate/signed-links' },

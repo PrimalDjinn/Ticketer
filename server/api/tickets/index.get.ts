@@ -2,7 +2,7 @@ import { and, count, desc, eq, gte, inArray, isNull, lte, or, type SQL } from 'd
 import { z } from 'zod'
 import { db, schema } from 'hub:db'
 
-const query = z.object({
+export const query = z.object({
   status: z.enum(TICKET_STATUSES).optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),

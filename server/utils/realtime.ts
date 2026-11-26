@@ -145,6 +145,10 @@ export function publish(event: H3Event, targets: Channel | Channel[], payload: R
     | { durable?: DurableLike; durableFetch?: (req: Request) => Promise<Response> }
     | undefined
 
+  // What the team hears is also the event log (webhooks, /api/v1/events). Not inside the Durable Object: there it's
+  // only fanning out what the Worker already recorded.
+  if (!cf?.durable && list.includes(channels.members)) recordRealtime(event, payload)
+
   if (cf?.durable) return deliver(list, data, cf.durable)
 
   if (cf?.durableFetch) {

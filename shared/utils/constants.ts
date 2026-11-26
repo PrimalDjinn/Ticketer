@@ -75,3 +75,41 @@ export const ACCENT_COLORS: Record<AccentColor, string> = {
   pink: '#db2777',
   rose: '#e11d48',
 }
+
+/**
+ * What a personal access token may do (`resource:read|write`). A call needs the endpoint's scope *and* a role that
+ * allows it: a viewer's token with `tickets:write` still can't change tickets. See docs/reference/api.md.
+ */
+export const API_SCOPES = [
+  'tickets:read',
+  'tickets:write',
+  'notes:read',
+  'notes:write',
+  'conversations:read',
+  'conversations:write',
+  'projects:read',
+  'tasks:read',
+  'tasks:write',
+  'people:read',
+] as const
+export type ApiScope = (typeof API_SCOPES)[number]
+
+/** Events sent to webhooks and listed by `GET /api/v1/events`. See docs/reference/webhooks.md. */
+export const WEBHOOK_EVENTS = [
+  'ticket.created',
+  'ticket.updated',
+  'ticket.deleted',
+  'ticket.comment.created',
+  'ticket.comment.deleted',
+  'conversation.created',
+  'conversation.updated',
+  'conversation.message.created',
+  'project.updated',
+  'project.deleted',
+  'task.created',
+  'task.updated',
+  'task.deleted',
+  'task.comment.created',
+  'task.comment.deleted',
+] as const
+export type WebhookEventType = (typeof WEBHOOK_EVENTS)[number]

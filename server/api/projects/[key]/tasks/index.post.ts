@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const newTaskSchema = z.object({
+export const newTaskSchema = z.object({
   title: z.string().trim().min(1, 'Give the task a title').max(300),
   description: z.string().max(20_000).default(''),
   statusId: z.number().int().positive().optional(),
