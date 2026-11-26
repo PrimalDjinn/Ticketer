@@ -42,7 +42,9 @@ Match the existing pages:
   addresses, or tasks linked to tickets: not in pages, API responses, realtime events, notifications or emails.
 - **Database changes** go in `server/db/schema.ts` with a migration from `pnpm db:generate` in
   `server/db/migrations/sqlite/`.
-- **Text people write** is rendered with `MarkdownText`, never with `v-html` of raw input.
+- **Text people write** (descriptions, comments) is rendered as Markdown with
+  `<MDC :value="…" :parser-options="userMarkdown" />`. The options turn off raw HTML and MDC component syntax;
+  never render it without them, and never with `v-html`.
 - **Secrets** never go in the repository: no keys, tokens or passwords, including in tests and docs.
 - **Keep the project generic.** Configuration for a particular deployment (domains, account IDs, email addresses)
   belongs in that deployment's environment or CI, not in this repository.
