@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Status | Phases 0 to 2 implemented (see [Implementation status](#implementation-status)); the rest is a proposal |
+| Status | Phases 0 to 3 implemented (see [Implementation status](#implementation-status)); the rest is a proposal |
 | Date | 2026-11-26 |
 | Scope | How other software extends Ticketer and calls it: a public API, webhooks, installable apps, UI extensions, and AI agents |
 
@@ -33,7 +33,7 @@ build a Slack or Linear bridge. They take roughly two months of focused work for
 
 ## Implementation status
 
-Built in November 2026. Phases 0 to 2 are done, adapted as follows. Phase 3, the MCP server, comes next.
+Built in November 2026. Phases 0 to 3 are done, adapted as follows.
 
 - **Phase 0, the event log.** Events are recorded where Ticketer already announces changes to the team in realtime
   (`publish` in `server/utils/realtime.ts` feeds `server/utils/events.ts`). That covers every route, GitHub sync and
@@ -51,6 +51,13 @@ Built in November 2026. Phases 0 to 2 are done, adapted as follows. Phase 3, the
   - Admins add webhooks directly in **Settings** > **Webhooks**, before apps exist. Each one has "Send internal notes"
     and "Send email addresses" switches instead of scopes. They'll become apps' endpoints in phase 4.
   - Retries start at 1 minute, run by an every-minute scheduled task on both runtimes, not by a Durable Object alarm.
+- **Phase 3, MCP.**
+  - `/mcp` (`server/routes/mcp.ts`) uses the official TypeScript SDK v2 (`createMcpHandler`). It's stateless Streamable
+    HTTP on the 2026-07-28 revision, with the SDK's stateless fallback for 2025-era clients.
+  - Tools are the `/api/v1` registry entries (each has a `tool` name and hints), called in-process with the caller's
+    token, so scopes, roles and filtering are the API's.
+  - Auth is personal access tokens only. OAuth, which the Claude and ChatGPT app connectors need, comes with the
+    authorization server in phase 4.
 
 ## Contents
 

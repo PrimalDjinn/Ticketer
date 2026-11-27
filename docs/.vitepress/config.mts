@@ -63,6 +63,7 @@ export default defineConfig({
           { text: 'Choose an integration flow', link: '/integrate/' },
           { text: 'Use the API', link: '/integrate/api' },
           { text: 'Receive webhooks', link: '/integrate/webhooks' },
+          { text: 'Connect an AI assistant (MCP)', link: '/integrate/mcp' },
           { text: 'Create a login link', link: '/integrate/login-link' },
           { text: 'Redirect with an API key', link: '/integrate/redirect' },
           { text: 'Create signed launch links', link: '/integrate/signed-links' },

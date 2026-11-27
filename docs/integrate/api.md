@@ -161,5 +161,6 @@ Each event type needs the read scope of its area, such as `tickets:read` for `ti
 ## What's next
 
 - [Receive webhooks](/integrate/webhooks)
+- [Connect an AI assistant (MCP)](/integrate/mcp)
 - [Use an AI coding assistant](/integrate/ai-assistants)
 - [Roles and permissions](/reference/roles)

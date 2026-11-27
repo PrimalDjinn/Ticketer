@@ -1,5 +1,10 @@
 # Use an AI coding assistant
 
+::: tip
+To let an assistant work *in* Ticketer (read tickets, reply, update tasks), connect it through MCP instead. See
+[Connect an AI assistant](/integrate/mcp).
+:::
+
 This page shows you how to let an AI coding assistant, such as Claude Code, Codex, Cursor, GitHub Copilot or Gemini
 CLI, add Ticketer to your product for you. You install the Ticketer **skill**, then ask the assistant in plain words.
 

@@ -3,7 +3,8 @@
 This section is for developers who connect other software to Ticketer. There are two kinds of connection:
 
 - **Work with Ticketer from scripts and tools**: read and change tickets, chats and tasks as yourself with the
-  [API](/integrate/api), and react to changes as they happen with [webhooks](/integrate/webhooks).
+  [API](/integrate/api), react to changes as they happen with [webhooks](/integrate/webhooks), or let an AI assistant
+  work in Ticketer through [MCP](/integrate/mcp).
 - **Send another product's users to Ticketer**: a "Report a problem" or "Contact support" button in that product. The
   rest of this page helps you pick the right flow for it.
 
